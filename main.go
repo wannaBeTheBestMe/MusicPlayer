@@ -15,12 +15,14 @@ import (
 	"github.com/dhowden/tag"
 	"github.com/go-sql-driver/mysql"
 	"github.com/gopxl/beep"
+	"github.com/gopxl/beep/effects"
 	"github.com/gopxl/beep/flac"
 	"github.com/gopxl/beep/speaker"
 	"github.com/machinebox/graphql"
 	"image/color"
 	"io"
 	"log"
+	"math"
 	"os"
 	"time"
 )
@@ -112,15 +114,26 @@ func main() {
 	w.ShowAndRun()
 }
 
-// playAudio plays audio in a separate goroutine
+var streamerWithVol *effects.Volume
+var vol float64
+var isSilent = false
+
+// playAudio plays audio (call with go to play in a separate goroutine)
 func playAudio() {
-	done := make(chan bool)
-	speaker.Play(beep.Seq(streamer, beep.Callback(func() {
-		done <- true
+	donePlaying := make(chan bool)
+	streamerWithVol = &effects.Volume{
+		Streamer: streamer,
+		Base:     math.E,
+		Volume:   vol,
+		Silent:   isSilent,
+	}
+
+	speaker.Play(beep.Seq(streamerWithVol, beep.Callback(func() {
+		donePlaying <- true
 	})))
 
 	// Wait for the audio to finish playing
-	<-done
+	<-donePlaying
 }
 
 func menubar(myWindow *fyne.Window, myApp *fyne.App) {
@@ -208,7 +221,16 @@ func (f *fixedSizeLayout) MinSize(objects []fyne.CanvasObject) fyne.Size {
 	rightLabelSize := f.rightLabel.MinSize()
 	sliderMin := objects[1].MinSize()
 
-	return fyne.NewSize(leftLabelSize.Width+sliderMin.Width+rightLabelSize.Width, fyne.Max(leftLabelSize.Height, fyne.Max(sliderMin.Height, rightLabelSize.Height)))
+	return fyne.NewSize(
+		leftLabelSize.Width+sliderMin.Width+rightLabelSize.Width,
+		fyne.Max(
+			leftLabelSize.Height,
+			fyne.Max(
+				sliderMin.Height,
+				rightLabelSize.Height,
+			),
+		),
+	)
 }
 
 func newFixedSizeLayout(leftLabel, rightLabel fyne.CanvasObject) fyne.Layout {
@@ -245,9 +267,21 @@ func createPlayerControls() *fyne.Container {
 		widget.NewButton("Shuffle", func() {}),
 	)
 
-	volumeSlider := widget.NewSlider(0, 100)
-	volumeSlider.Step = 1
-	volumeSlider.Value = 80
+	vol = 0.0
+	volumeSlider := widget.NewSliderWithData(-2.5, 0, binding.BindFloat(&vol))
+	volumeSlider.Step = (0 - (-2.5)) / 100
+	volumeSlider.OnChanged = func(v float64) {
+		if v == -2.5 {
+			isSilent = true
+		} else {
+			isSilent = false
+			vol = v
+		}
+		if playPauseButton.Icon == theme.MediaPauseIcon() {
+			speaker.Clear()
+			go playAudio()
+		}
+	}
 	volumeSliderCont := container.NewHBox(volumeSlider)
 
 	mySpacer := canvas.NewRectangle(color.Transparent)
