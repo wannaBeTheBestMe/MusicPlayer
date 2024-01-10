@@ -1,0 +1,404 @@
+{
+	"lookup": {
+		"artist": {
+			"name": "Nirvana",
+			"releaseGroups": {
+				"edges": [
+					{
+						"node": {
+							"firstReleaseDate": "1992-12-14",
+							"relationships": {
+								"releaseGroups": {
+									"edges": []
+								}
+							},
+							"title": "Incesticide"
+						}
+					},
+					{
+						"node": {
+							"firstReleaseDate": "2002-10-23",
+							"relationships": {
+								"releaseGroups": {
+									"edges": []
+								}
+							},
+							"title": "Greatest Hits"
+						}
+					},
+					{
+						"node": {
+							"firstReleaseDate": "1993",
+							"relationships": {
+								"releaseGroups": {
+									"edges": []
+								}
+							},
+							"title": "Wipeout"
+						}
+					},
+					{
+						"node": {
+							"firstReleaseDate": "1991-09-24",
+							"relationships": {
+								"releaseGroups": {
+									"edges": [
+										{
+											"node": {
+												"target": {
+													"firstReleaseDate": "1991",
+													"title": "Come as You Are"
+												}
+											}
+										},
+										{
+											"node": {
+												"target": {
+													"firstReleaseDate": "1992-11-30",
+													"title": "In Bloom"
+												}
+											}
+										},
+										{
+											"node": {
+												"target": {
+													"firstReleaseDate": "1992-07-20",
+													"title": "Lithium"
+												}
+											}
+										},
+										{
+											"node": {
+												"target": {
+													"firstReleaseDate": "1991",
+													"title": "On a Plain"
+												}
+											}
+										},
+										{
+											"node": {
+												"target": {
+													"firstReleaseDate": "1991-09-10",
+													"title": "Smells Like Teen Spirit"
+												}
+											}
+										}
+									]
+								}
+							},
+							"title": "Nevermind"
+						}
+					},
+					{
+						"node": {
+							"firstReleaseDate": "1993-01-23",
+							"relationships": {
+								"releaseGroups": {
+									"edges": []
+								}
+							},
+							"title": "Hollywood Rock Festival 93"
+						}
+					},
+					{
+						"node": {
+							"firstReleaseDate": "1996-09-30",
+							"relationships": {
+								"releaseGroups": {
+									"edges": [
+										{
+											"node": {
+												"target": {
+													"firstReleaseDate": "1996",
+													"title": "Drain You"
+												}
+											}
+										}
+									]
+								}
+							},
+							"title": "From the Muddy Banks of the Wishkah"
+						}
+					},
+					{
+						"node": {
+							"firstReleaseDate": "1993-09-21",
+							"relationships": {
+								"releaseGroups": {
+									"edges": [
+										{
+											"node": {
+												"target": {
+													"firstReleaseDate": "1993-12",
+													"title": "All Apologies / Rape Me / MV"
+												}
+											}
+										},
+										{
+											"node": {
+												"target": {
+													"firstReleaseDate": "1993-08-23",
+													"title": "Heart‐Shaped Box"
+												}
+											}
+										},
+										{
+											"node": {
+												"target": {
+													"firstReleaseDate": "1994",
+													"title": "Pennyroyal Tea"
+												}
+											}
+										}
+									]
+								}
+							},
+							"title": "In Utero"
+						}
+					},
+					{
+						"node": {
+							"firstReleaseDate": "1992",
+							"relationships": {
+								"releaseGroups": {
+									"edges": []
+								}
+							},
+							"title": "Down With Me"
+						}
+					},
+					{
+						"node": {
+							"firstReleaseDate": "1994",
+							"relationships": {
+								"releaseGroups": {
+									"edges": []
+								}
+							},
+							"title": "Fatal Attraction"
+						}
+					},
+					{
+						"node": {
+							"firstReleaseDate": "1992",
+							"relationships": {
+								"releaseGroups": {
+									"edges": []
+								}
+							},
+							"title": "Seventh Heaven"
+						}
+					},
+					{
+						"node": {
+							"firstReleaseDate": "2009-10-30",
+							"relationships": {
+								"releaseGroups": {
+									"edges": []
+								}
+							},
+							"title": "Live at Reading"
+						}
+					},
+					{
+						"node": {
+							"firstReleaseDate": "1994-11-15",
+							"relationships": {
+								"releaseGroups": {
+									"edges": []
+								}
+							},
+							"title": "Live! Tonight! Sold Out!!"
+						}
+					},
+					{
+						"node": {
+							"firstReleaseDate": "2002-10-18",
+							"relationships": {
+								"releaseGroups": {
+									"edges": [
+										{
+											"node": {
+												"target": {
+													"firstReleaseDate": "2002-10-08",
+													"title": "You Know You’re Right"
+												}
+											}
+										}
+									]
+								}
+							},
+							"title": "Nirvana"
+						}
+					},
+					{
+						"node": {
+							"firstReleaseDate": "2010-08-31",
+							"relationships": {
+								"releaseGroups": {
+									"edges": []
+								}
+							},
+							"title": "ICON"
+						}
+					},
+					{
+						"node": {
+							"firstReleaseDate": "2015-05-08",
+							"relationships": {
+								"releaseGroups": {
+									"edges": []
+								}
+							},
+							"title": "Complete Live On KAOS FM 1987"
+						}
+					},
+					{
+						"node": {
+							"firstReleaseDate": "1992",
+							"relationships": {
+								"releaseGroups": {
+									"edges": []
+								}
+							},
+							"title": "Before We Ever Minded"
+						}
+					},
+					{
+						"node": {
+							"firstReleaseDate": "1993",
+							"relationships": {
+								"releaseGroups": {
+									"edges": []
+								}
+							},
+							"title": "In Utero Demos"
+						}
+					},
+					{
+						"node": {
+							"firstReleaseDate": "2011",
+							"relationships": {
+								"releaseGroups": {
+									"edges": []
+								}
+							},
+							"title": "2 for 1: Incesticide / In Utero"
+						}
+					},
+					{
+						"node": {
+							"firstReleaseDate": "2013-09-23",
+							"relationships": {
+								"releaseGroups": {
+									"edges": []
+								}
+							},
+							"title": "Live and Loud"
+						}
+					},
+					{
+						"node": {
+							"firstReleaseDate": "2004-11-23",
+							"relationships": {
+								"releaseGroups": {
+									"edges": []
+								}
+							},
+							"title": "With the Lights Out"
+						}
+					},
+					{
+						"node": {
+							"firstReleaseDate": "2011-09-26",
+							"relationships": {
+								"releaseGroups": {
+									"edges": []
+								}
+							},
+							"title": "Live at the Paramount"
+						}
+					},
+					{
+						"node": {
+							"firstReleaseDate": "2005-10-31",
+							"relationships": {
+								"releaseGroups": {
+									"edges": []
+								}
+							},
+							"title": "Sliver: The Best of the Box"
+						}
+					},
+					{
+						"node": {
+							"firstReleaseDate": "1989-06-01",
+							"relationships": {
+								"releaseGroups": {
+									"edges": [
+										{
+											"node": {
+												"target": {
+													"firstReleaseDate": "1988-11",
+													"title": "Love Buzz"
+												}
+											}
+										}
+									]
+								}
+							},
+							"title": "Bleach"
+						}
+					},
+					{
+						"node": {
+							"firstReleaseDate": "1994-10-31",
+							"relationships": {
+								"releaseGroups": {
+									"edges": [
+										{
+											"node": {
+												"target": {
+													"firstReleaseDate": "1994",
+													"title": "Lake of Fire / Where Did You Sleep Last Night"
+												}
+											}
+										},
+										{
+											"node": {
+												"target": {
+													"firstReleaseDate": "1995-01",
+													"title": "The Man Who Sold the World"
+												}
+											}
+										},
+										{
+											"node": {
+												"target": {
+													"firstReleaseDate": "1994",
+													"title": "Where Did You Sleep Last Night?"
+												}
+											}
+										}
+									]
+								}
+							},
+							"title": "MTV Unplugged in New York"
+						}
+					},
+					{
+						"node": {
+							"firstReleaseDate": "1994",
+							"relationships": {
+								"releaseGroups": {
+									"edges": []
+								}
+							},
+							"title": "Grunge Is Dead"
+						}
+					}
+				]
+			}
+		}
+	}
+}

@@ -1,0 +1,14 @@
+{
+  "name": "api",
+  "version": "1.0.0",
+  "description": "Fetch music metadata",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "graphbrainz": "^9.0.0"
+  },
+	"type": "module",
+	"scripts": {
+		"run": "node index.js"
+	}
+}
