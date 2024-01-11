@@ -22,11 +22,6 @@ var request = graphql.NewRequest(``)
 func main() {
 	data_access.EstablishConnection()
 
-	dir := "C:\\Users\\Asus\\Music\\MusicPlayer"
-	data_access.BatchAddTracks(dir)
-
-	data_access.GetAlbumDirectories()
-
 	//client := graphql.NewClient("http://localhost:3000/graphbrainz")
 	//go func() {
 	//	api.MetadataRequest(client, request)
@@ -38,19 +33,15 @@ func main() {
 	//}()
 
 	// Load the FLAC file
-	gui.Mfile, _ = os.Open(gui.MfilePath)
-	gui.Meta, _ = data_access.ReadTags(gui.Mfile, &gui.MfilePath)
-	fmt.Println(gui.Meta.Genre())
+	Mfile, _ := os.Open(gui.MfilePath)
+	Meta, _ := data_access.ReadTags(Mfile, &gui.MfilePath)
+	fmt.Println(Meta.Genre())
 
-	func() {
-		gui.StreamerMu.Lock()
-		defer gui.StreamerMu.Unlock()
-		gui.Streamer, gui.Format, _ = flac.Decode(gui.Mfile)
-	}()
-	defer gui.Streamer.Close()
+	Streamer, Format, _ := flac.Decode(Mfile)
+	defer Streamer.Close()
 
 	// Initialize the speaker
-	if err := speaker.Init(gui.Format.SampleRate, gui.Format.SampleRate.N(time.Second/10)); err != nil {
+	if err := speaker.Init(Format.SampleRate, Format.SampleRate.N(time.Second/10)); err != nil {
 		log.Fatal(err)
 	}
 
@@ -59,10 +50,10 @@ func main() {
 
 	gui.Menubar(&w, &a)
 	header := gui.CreateHeader()
-	contentLabel := widget.NewLabel(gui.Meta.Album())
+	contentLabel := widget.NewLabel(Meta.Album())
 	mainContent := container.New(layout.NewStackLayout(), contentLabel)
 	navPanel := gui.CreateNavPanel(mainContent)
-	playerControls := gui.CreatePlayerControls()
+	playerControls := gui.CreatePlayerControls(&Streamer, &Format)
 
 	mainLayout := container.NewBorder(header, playerControls, navPanel, nil, mainContent)
 

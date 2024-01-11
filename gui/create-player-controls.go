@@ -9,48 +9,28 @@ import (
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
-	"github.com/dhowden/tag"
 	"github.com/gopxl/beep"
 	"github.com/gopxl/beep/effects"
 	"github.com/gopxl/beep/speaker"
 	"image/color"
-	"log"
 	"math"
-	"os"
-	"sync"
 	"time"
 )
 
 // var MfilePath = "\"C:\\Users\\Asus\\Downloads\\Lame_Drivers_-_01_-_Frozen_Egg.mp3\""
 var MfilePath = "C:\\Users\\Asus\\Music\\MusicPlayer\\Vangelis - Nocturne (2019) [24Bit Hi-Res]\\10 - To a Friend.flac"
-var Mfile *os.File
 
-var (
-	Streamer   beep.StreamSeekCloser
-	StreamerMu sync.Mutex
-)
-
-var Format beep.Format
-
-var Meta tag.Metadata
-
-var streamerWithVol *effects.Volume
 var vol float64
 var isSilent = false
 
-func CreatePlayerControls() *fyne.Container {
-	//// Stop button
-	//stopButton := widget.NewButton("Stop", func() {
-	//	speaker.Close()
-	//})
-
+func CreatePlayerControls(streamer *beep.StreamSeekCloser, format *beep.Format) *fyne.Container {
 	skipPrevious := widget.NewButtonWithIcon("", theme.MediaSkipPreviousIcon(), nil)
 
 	playPauseButton := widget.NewButtonWithIcon("", theme.MediaPlayIcon(), nil)
 	playPauseButton.OnTapped = func() {
 		if playPauseButton.Icon == theme.MediaPlayIcon() {
 			playPauseButton.SetIcon(theme.MediaPauseIcon())
-			go playAudio()
+			go playAudio(streamer)
 		} else {
 			playPauseButton.SetIcon(theme.MediaPlayIcon())
 			speaker.Clear()
@@ -80,7 +60,7 @@ func CreatePlayerControls() *fyne.Container {
 		}
 		if playPauseButton.Icon == theme.MediaPauseIcon() {
 			speaker.Clear()
-			go playAudio()
+			go playAudio(streamer)
 		}
 	}
 	volumeSliderCont := container.NewHBox(volumeSlider)
@@ -93,9 +73,7 @@ func CreatePlayerControls() *fyne.Container {
 	pos := 0.0
 	playbackPos := binding.BindFloat(&pos)
 	duration := func() time.Duration {
-		StreamerMu.Lock()
-		defer StreamerMu.Unlock()
-		return time.Second * time.Duration(Streamer.Len()) / time.Duration(Format.SampleRate)
+		return time.Second * time.Duration((*streamer).Len()) / time.Duration((*format).SampleRate)
 	}()
 	formattedDuration := formatTime(duration)
 	playbackDurLabel := widget.NewLabel(formattedDuration)
@@ -103,32 +81,30 @@ func CreatePlayerControls() *fyne.Container {
 	playbackSlider := widget.NewSliderWithData(0, duration.Seconds(), playbackPos)
 	playbackSlider.Step = 0.001
 	position := func() int {
-		StreamerMu.Lock()
-		defer StreamerMu.Unlock()
-		return Streamer.Position()
+		return (*streamer).Position()
 	}()
-	elapsed := time.Second * time.Duration(position) / time.Duration(Format.SampleRate)
+	elapsed := time.Second * time.Duration(position) / time.Duration((*format).SampleRate)
 	playbackPosText := binding.NewString()
 	playbackPosText.Set(formatTime(elapsed))
 	playbackPosLabel := widget.NewLabelWithData(playbackPosText)
 
 	playbackSlider.OnChanged = func(t float64) {
 		if t-elapsed.Seconds() > 0.1 {
-			speaker.Clear()
-			func() {
-				if worked := StreamerMu.TryLock(); worked {
-					speaker.Lock()
-					defer speaker.Unlock()
-					defer StreamerMu.Unlock()
-
-					fmt.Println("About to do it")
-					err := Streamer.Seek(0)
-					if err != nil {
-						log.Fatal(err)
-					}
-					fmt.Println("Done it")
-				}
-			}()
+			//speaker.Clear()
+			//func() {
+			//	if worked := StreamerMu.TryLock(); worked {
+			//		speaker.Lock()
+			//		defer speaker.Unlock()
+			//		defer StreamerMu.Unlock()
+			//
+			//		fmt.Println("About to do it")
+			//		err := (*streamer).Seek(0)
+			//		if err != nil {
+			//			log.Fatal(err)
+			//		}
+			//		fmt.Println("Done it")
+			//	}
+			//}()
 
 			//	fmt.Println("User")
 			//	speaker.Clear()
@@ -163,11 +139,9 @@ func CreatePlayerControls() *fyne.Container {
 	go func() {
 		for range time.NewTicker(time.Millisecond).C {
 			position = func() int {
-				StreamerMu.Lock()
-				defer StreamerMu.Unlock()
-				return Streamer.Position()
+				return (*streamer).Position()
 			}()
-			elapsed = time.Second * time.Duration(position) / time.Duration(Format.SampleRate)
+			elapsed = time.Second * time.Duration(position) / time.Duration((*format).SampleRate)
 			pos = elapsed.Seconds()
 			playbackPos.Reload()
 			playbackPosText.Set(formatTime(elapsed))
@@ -183,18 +157,16 @@ func CreatePlayerControls() *fyne.Container {
 }
 
 // playAudio plays audio (call with go to play in a separate goroutine)
-func playAudio() {
+func playAudio(streamer *beep.StreamSeekCloser) {
 	donePlaying := make(chan bool)
-	streamerWithVol = &effects.Volume{
-		Streamer: Streamer,
+	streamerWithVol := &effects.Volume{
+		Streamer: *streamer,
 		Base:     math.E,
 		Volume:   vol,
 		Silent:   isSilent,
 	}
 
 	func() {
-		StreamerMu.Lock()
-		defer StreamerMu.Unlock()
 		speaker.Play(beep.Seq(streamerWithVol, beep.Callback(func() {
 			donePlaying <- true
 		})))

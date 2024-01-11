@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"MusicPlayer/data_access"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/dialog"
 )
@@ -28,8 +29,13 @@ func Menubar(myWindow *fyne.Window, myApp *fyne.App) {
 		fyne.NewMenuItem("Paste", nil),
 	)
 
+	importMenu := fyne.NewMenu("Import",
+		fyne.NewMenuItem("Import tracks to database",
+			func() { data_access.BatchAddTracks("C:\\Users\\Asus\\Music\\MusicPlayer") }),
+	)
+
 	// Create the main menu with the menus
-	mainMenu := fyne.NewMainMenu(fileMenu, editMenu)
+	mainMenu := fyne.NewMainMenu(fileMenu, editMenu, importMenu)
 
 	// Set the main menu to the window
 	(*myWindow).SetMainMenu(mainMenu)
