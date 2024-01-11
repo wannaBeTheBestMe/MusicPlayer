@@ -3,80 +3,23 @@ package data_access
 import (
 	"database/sql"
 	"fmt"
+	"github.com/dhowden/tag"
 	"github.com/go-sql-driver/mysql"
+	"io"
+	"io/fs"
 	"log"
+	"math"
 	"os"
+	"path/filepath"
+	"sync"
 )
 
 // https://go.dev/doc/tutorial/database-access
 
-var db *sql.DB
-
-// Making db a global variable simplifies this example.
-// In production, you’d avoid the global variable,
-// such as by passing the variable to functions that
-// need it or by wrapping it in a struct.
-
-type Album struct {
-	ID     int64
-	Title  string
-	Artist string
-	Price  float32
-}
-
-// AlbumsByArtist queries for albums that have the specified artist name.
-func AlbumsByArtist(name string) ([]Album, error) {
-	var albums []Album
-
-	rows, err := db.Query("SELECT * FROM album WHERE artist = ?", name)
-	if err != nil {
-		return nil, fmt.Errorf("AlbumsByArtist %q: %v", name, err)
-	}
-	defer rows.Close()
-	// Loop through rows, using Scan to assign column data to struct fields.
-	for rows.Next() {
-		var alb Album
-		if err := rows.Scan(&alb.ID, &alb.Title, &alb.Artist, &alb.Price); err != nil {
-			return nil, fmt.Errorf("AlbumsbyArtist %q: %v", name, err)
-		}
-		albums = append(albums, alb)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("AlbumsByArtist %q: %v", name, err)
-	}
-	return albums, nil
-}
-
-// AlbumByID queries for the album with the specified ID.
-func AlbumByID(id int64) (Album, error) {
-	var alb Album
-
-	row := db.QueryRow("SELECT * FROM album where id = ?", id)
-	if err := row.Scan(&alb.ID, &alb.Title, &alb.Artist, &alb.Price); err != nil {
-		if err == sql.ErrNoRows {
-			return alb, fmt.Errorf("AlbumByID %d: no such album", id)
-		}
-		return alb, fmt.Errorf("AlbumByID %d: %v", id, err)
-	}
-	return alb, nil
-}
-
-// AddAlbum adds the specified album to the database,
-// returning the album ID of the new entry
-func AddAlbum(alb Album) (int64, error) {
-	result, err := db.Exec("INSERT INTO album (title, artist, price) VALUES (?, ?, ?)", alb.Title, alb.Artist, alb.Price)
-	if err != nil {
-		return 0, fmt.Errorf("AddAlbum: %v", err)
-	}
-	id, err := result.LastInsertId()
-	if err != nil {
-		return 0, fmt.Errorf("AddAlbum: %v", err)
-	}
-	return id, nil
-}
+var DB *sql.DB
 
 func EstablishConnection() {
-	// Capture connection properties
+	// Capture connection properties.
 	cfg := mysql.Config{
 		User:   os.Getenv("DBUSER"),
 		Passwd: os.Getenv("DBPASS"),
@@ -84,21 +27,255 @@ func EstablishConnection() {
 		Addr:   "127.0.0.1:3306",
 		DBName: "MusicPlayer",
 	}
-	// Get a database handle
+	// Get a database handle.
 	var err error
-	db, err = sql.Open("mysql", cfg.FormatDSN())
+	DB, err = sql.Open("mysql", cfg.FormatDSN())
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	pingErr := db.Ping()
+	pingErr := DB.Ping()
 	if pingErr != nil {
 		log.Fatal(pingErr)
 	}
-	// To simplify the code, you’re calling log.Fatal to end
-	// execution and print the error to the console. In
-	// production code, you’ll want to handle errors in a
-	// more graceful way.
-
 	fmt.Println("Connected!")
 }
+
+type Track struct {
+	ID                 int64
+	Format             string
+	FileType           string
+	Title              string
+	Album              string
+	Artist             string
+	AlbumArtist        string
+	Composer           string
+	Year               int
+	Genre              string
+	TrackNum           int
+	TrackTotal         int
+	DiscNum            int
+	DiscTotal          int
+	PictureExt         string
+	PictureMIMEType    string
+	PictureType        string
+	PictureDescription string
+	PictureData        []byte
+	Lyrics             string
+	Comment            string
+	Valid              bool
+}
+
+var MusicDir = "C:\\Users\\Asus\\Music\\MusicPlayer"
+
+func GetAlbumDirectories() {
+	albumsDir, err := os.ReadDir(MusicDir)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, albumDir := range albumsDir {
+		fmt.Println(albumDir)
+	}
+}
+
+func BatchAddTracks() {
+	dir := "C:\\Users\\Asus\\Music\\MusicPlayer\\Vangelis - Nocturne (2019) [24Bit Hi-Res]"
+	files, err := os.ReadDir(dir)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var wg sync.WaitGroup
+	for _, file := range files {
+		if file.IsDir() {
+			continue // skip directories
+		}
+		wg.Add(1)
+		func(filename string) {
+			defer wg.Done()
+			currTrack := CreateTrackFromFile(filepath.Join(dir, filename))
+			_, err := AddTrack(currTrack)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+		}(file.Name())
+	}
+
+	wg.Wait()
+}
+
+func AddTrack(track Track) (int64, error) {
+	if track.Valid == false {
+		return 0, fmt.Errorf("AddTrack: %v is not a valid track, skipping", track)
+	}
+
+	result, err := DB.Exec(`
+INSERT INTO Tracks
+	(Format, FileType, Title, Album, Artist,
+	 AlbumArtist, Composer, Year, Genre,
+	 TrackNum, TrackTotal, DiscNum, DiscTotal,
+	 PictureExt, PictureMIMEType, PictureType,
+	 PictureDescription, PictureData, Lyrics, Comment)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		&track.Format, &track.FileType, &track.Title, &track.Album, &track.Artist,
+		&track.AlbumArtist, &track.Composer, &track.Year, &track.Genre,
+		&track.TrackNum, &track.TrackTotal, &track.DiscNum, &track.DiscTotal,
+		&track.PictureExt, &track.PictureMIMEType, &track.PictureType,
+		&track.PictureDescription, &track.PictureData, &track.Lyrics,
+		&track.Comment)
+
+	if err != nil {
+		return 0, fmt.Errorf("AddTrack: %v", err)
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("AddTrack: %v", err)
+	}
+	return id, nil
+}
+
+func CreateTrackFromFile(filePath string) Track {
+	f, err := os.Open(filePath)
+	if err != nil {
+		log.Printf("Error opening file %s: %v", filePath, err)
+		return Track{Valid: false}
+	}
+	defer f.Close()
+
+	tags, err := ReadTags(f, &filePath)
+	if err != nil {
+		log.Printf("Error reading tags from file %s: %v", filePath, err)
+		return Track{Valid: false}
+	}
+
+	// Process tags here...
+	//log.Printf("Tags for %s: %v", filePath, tags)
+
+	trackNum, trackTotal := tags.Track()
+	discNum, discTotal := tags.Disc()
+	pic := tags.Picture()
+	track := Track{
+		Format:             string(tags.Format()),
+		FileType:           string(tags.FileType()),
+		Title:              tags.Title(),
+		Album:              tags.Album(),
+		Artist:             tags.Artist(),
+		AlbumArtist:        tags.AlbumArtist(),
+		Composer:           tags.Composer(),
+		Year:               tags.Year(),
+		Genre:              tags.Genre(),
+		TrackNum:           trackNum,
+		TrackTotal:         trackTotal,
+		DiscNum:            discNum,
+		DiscTotal:          discTotal,
+		PictureExt:         pic.Ext,
+		PictureMIMEType:    pic.MIMEType,
+		PictureType:        pic.Type,
+		PictureDescription: pic.Description,
+		PictureData:        pic.Data,
+		Lyrics:             tags.Lyrics(),
+		Comment:            tags.Comment(),
+		Valid:              true,
+	}
+	return track
+}
+
+func ReadTags(file *os.File, path *string) (tag.Metadata, error) {
+	var meta tag.Metadata
+	var err error
+	switch MFileExt := filepath.Ext(*path); MFileExt {
+	case ".flac":
+		meta, err = tag.ReadFLACTags(file)
+	case ".ogg":
+		meta, err = tag.ReadOGGTags(file)
+	case ".dsf":
+		meta, err = tag.ReadDSFTags(file)
+	case ".mp4":
+		meta, err = tag.ReadAtoms(file)
+	default:
+		meta, err = tag.ReadFrom(file)
+	}
+
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		log.Fatal(err)
+	}
+
+	return meta, err
+}
+
+func GetMusicDirSize() string {
+	var sizeBytes int64
+	err := filepath.Walk(MusicDir, func(path string, info fs.FileInfo, err error) error {
+		if !info.IsDir() {
+			sizeBytes += info.Size()
+		}
+		return nil
+	})
+	if err != nil {
+		fmt.Println(err)
+		return ""
+	}
+
+	sizeGibi := ((float64(sizeBytes) / 1024) / 1024) / 1024
+	size := int(math.Round(sizeGibi))
+	return fmt.Sprintf("%v GB on disk", size)
+}
+
+//type Album struct {
+//	ID     int64
+//	Title  string
+//	Artist string
+//	Price  float32
+//}
+//
+//// AlbumsByArtist queries for albums that have the specified artist name.
+//func AlbumsByArtist(name string) ([]Album, error) {
+//	var albums []Album
+//
+//	rows, err := DB.Query("SELECT * FROM album WHERE artist = ?", name)
+//	if err != nil {
+//		return nil, fmt.Errorf("AlbumsByArtist %q: %v", name, err)
+//	}
+//	defer rows.Close()
+//	// Loop through rows, using Scan to assign column data to struct fields.
+//	for rows.Next() {
+//		var alb Album
+//		if err := rows.Scan(&alb.ID, &alb.Title, &alb.Artist, &alb.Price); err != nil {
+//			return nil, fmt.Errorf("AlbumsbyArtist %q: %v", name, err)
+//		}
+//		albums = append(albums, alb)
+//	}
+//	if err := rows.Err(); err != nil {
+//		return nil, fmt.Errorf("AlbumsByArtist %q: %v", name, err)
+//	}
+//	return albums, nil
+//}
+//
+//// AlbumByID queries for the album with the specified ID.
+//func AlbumByID(id int64) (Album, error) {
+//	var alb Album
+//
+//	row := DB.QueryRow("SELECT * FROM album where id = ?", id)
+//	if err := row.Scan(&alb.ID, &alb.Title, &alb.Artist, &alb.Price); err != nil {
+//		if err == sql.ErrNoRows {
+//			return alb, fmt.Errorf("AlbumByID %d: no such album", id)
+//		}
+//		return alb, fmt.Errorf("AlbumByID %d: %v", id, err)
+//	}
+//	return alb, nil
+//}
+//
+//// AddAlbum adds the specified album to the database,
+//// returning the album ID of the new entry
+//func AddAlbum(alb Album) (int64, error) {
+//	result, err := DB.Exec("INSERT INTO album (title, artist, price) VALUES (?, ?, ?)", alb.Title, alb.Artist, alb.Price)
+//	if err != nil {
+//		return 0, fmt.Errorf("AddAlbum: %v", err)
+//	}
+//	id, err := result.LastInsertId()
+//	if err != nil {
+//		return 0, fmt.Errorf("AddAlbum: %v", err)
+//	}
+//	return id, nil
+//}

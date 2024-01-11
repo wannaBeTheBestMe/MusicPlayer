@@ -9,6 +9,7 @@ require (
 	github.com/dhowden/tag v0.0.0-20230630033851-978a0926ee25
 	github.com/gopxl/beep v1.3.0
 	github.com/machinebox/graphql v0.2.2
+	golang.org/x/exp v0.0.0-20200224162631-6cc2880d07d6
 )
 
 require (
@@ -27,6 +28,7 @@ require (
 	github.com/go-text/typesetting v0.0.0-20230616162802-9c17dd34aa4a // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/gopherjs/gopherjs v1.17.2 // indirect
+	github.com/hajimehoshi/go-mp3 v0.3.4 // indirect
 	github.com/icza/bitio v1.1.0 // indirect
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect
 	github.com/matryer/is v1.4.1 // indirect
