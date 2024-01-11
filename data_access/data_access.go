@@ -11,7 +11,6 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"sync"
 )
 
 // https://go.dev/doc/tutorial/database-access
@@ -78,31 +77,31 @@ func GetAlbumDirectories() {
 	}
 }
 
-func BatchAddTracks() {
-	dir := "C:\\Users\\Asus\\Music\\MusicPlayer\\Vangelis - Nocturne (2019) [24Bit Hi-Res]"
+func BatchAddTracks(dir string) {
 	files, err := os.ReadDir(dir)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	var wg sync.WaitGroup
+	//var wg sync.WaitGroup
 	for _, file := range files {
 		if file.IsDir() {
-			continue // skip directories
+			BatchAddTracks(filepath.Join(dir, file.Name()))
+		} else {
+			//wg.Add(1)
+			func(filename string) {
+				//defer wg.Done()
+				currTrack := CreateTrackFromFile(filepath.Join(dir, filename))
+				_, err := AddTrack(currTrack)
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+			}(file.Name())
 		}
-		wg.Add(1)
-		func(filename string) {
-			defer wg.Done()
-			currTrack := CreateTrackFromFile(filepath.Join(dir, filename))
-			_, err := AddTrack(currTrack)
-			if err != nil {
-				fmt.Println(err)
-				return
-			}
-		}(file.Name())
 	}
 
-	wg.Wait()
+	//wg.Wait()
 }
 
 func AddTrack(track Track) (int64, error) {

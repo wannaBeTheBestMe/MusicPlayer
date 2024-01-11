@@ -22,7 +22,8 @@ var request = graphql.NewRequest(``)
 func main() {
 	data_access.EstablishConnection()
 
-	data_access.BatchAddTracks()
+	dir := "C:\\Users\\Asus\\Music\\MusicPlayer"
+	data_access.BatchAddTracks(dir)
 
 	data_access.GetAlbumDirectories()
 
