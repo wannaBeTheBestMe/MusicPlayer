@@ -8,28 +8,37 @@ import (
 )
 
 func CreateNavPanel(mainContent *fyne.Container) *fyne.Container {
-	navPanel := container.NewVBox(
-		widget.NewButton("Home", nil),
-		widget.NewButton("Explore", nil),
-		widget.NewButton("Library", nil),
-		widget.NewButtonWithIcon("", theme.ContentAddIcon(), nil),
-	)
+	currentView := ""
+
 	// Function to update main content (simulating navigation)
 	updateContent := func(content fyne.CanvasObject) {
 		mainContent.Objects = []fyne.CanvasObject{content}
 		mainContent.Refresh()
 	}
 
-	// Link navigation buttons to update main content
-	navPanel.Objects[0].(*widget.Button).OnTapped = func() {
-		updateContent(widget.NewLabel("Home View"))
-	}
-	navPanel.Objects[1].(*widget.Button).OnTapped = func() {
-		updateContent(widget.NewLabel("Explore View"))
-	}
-	navPanel.Objects[2].(*widget.Button).OnTapped = func() {
-		updateContent(widget.NewLabel("Library View"))
-	}
+	updateContent(CreateCardGridScroll())
+
+	navPanel := container.NewVBox(
+		widget.NewButton("Home", func() {
+			if currentView != "Home" {
+				currentView = "Home"
+				updateContent(CreateCardGridScroll())
+			}
+		}),
+		widget.NewButton("Explore", func() {
+			if currentView != "Explore" {
+				currentView = "Explore"
+				updateContent(widget.NewLabel("Explore View"))
+			}
+		}),
+		widget.NewButton("Library", func() {
+			if currentView != "Library" {
+				currentView = "Library"
+				updateContent(widget.NewLabel("Library View"))
+			}
+		}),
+		widget.NewButtonWithIcon("", theme.ContentAddIcon(), nil),
+	)
 
 	return navPanel
 }

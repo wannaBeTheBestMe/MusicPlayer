@@ -18,7 +18,7 @@ import (
 )
 
 // var MfilePath = "\"C:\\Users\\Asus\\Downloads\\Lame_Drivers_-_01_-_Frozen_Egg.mp3\""
-var MfilePath = "C:\\Users\\Asus\\Music\\MusicPlayer\\Vangelis - Nocturne (2019) [24Bit Hi-Res]\\10 - To a Friend.flac"
+var MfilePath = "C:\\Users\\Asus\\Music\\MusicPlayer\\Gladiator Soundtrack\\17. Now We Are Free.flac"
 
 var vol float64
 var isSilent = false

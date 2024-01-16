@@ -8,7 +8,6 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
-	"fyne.io/fyne/v2/widget"
 	"github.com/gopxl/beep/flac"
 	"github.com/gopxl/beep/speaker"
 	"github.com/machinebox/graphql"
@@ -21,6 +20,7 @@ var request = graphql.NewRequest(``)
 
 func main() {
 	data_access.EstablishConnection()
+	go data_access.LoadHomeAlbums()
 
 	//client := graphql.NewClient("http://localhost:3000/graphbrainz")
 	//go func() {
@@ -50,8 +50,7 @@ func main() {
 
 	gui.Menubar(&w, &a)
 	header := gui.CreateHeader()
-	contentLabel := widget.NewLabel(Meta.Album())
-	mainContent := container.New(layout.NewStackLayout(), contentLabel)
+	mainContent := container.New(layout.NewStackLayout())
 	navPanel := gui.CreateNavPanel(mainContent)
 	playerControls := gui.CreatePlayerControls(&Streamer, &Format)
 

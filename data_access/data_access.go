@@ -221,13 +221,57 @@ func GetMusicDirSize() string {
 	return fmt.Sprintf("%v GB on disk", size)
 }
 
-//type Album struct {
-//	ID     int64
-//	Title  string
-//	Artist string
-//	Price  float32
-//}
-//
+type Album struct {
+	ID    int64
+	Title string
+	//Artist      string
+	AlbumArtist string
+	PictureData []byte
+}
+
+var HomeAlbumsLoaded = false
+var HomeAlbumsArr []Album
+
+func LoadHomeAlbums() error {
+	albums, err := HomeAlbums()
+	if err != nil {
+		return err
+	}
+
+	HomeAlbumsArr = albums
+	HomeAlbumsLoaded = true
+	return nil
+}
+
+func HomeAlbums() ([]Album, error) {
+	var albums []Album
+
+	var HomeQueryString = `
+SELECT t.id AS FirstTrackId, t.Album, t.AlbumArtist, t.PictureData
+FROM tracks t
+INNER JOIN (
+    SELECT MIN(id) AS MinId, Album
+    FROM tracks
+    GROUP BY Album
+) AS sub ON t.id = sub.MinId
+ORDER BY t.Album;`
+	rows, err := DB.Query(HomeQueryString)
+	if err != nil {
+		return nil, fmt.Errorf("HomeAlbums: %v", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var alb Album
+		if err := rows.Scan(&alb.ID, &alb.Title, &alb.AlbumArtist, &alb.PictureData); err != nil {
+			return nil, fmt.Errorf("HomeAlbums %v", err)
+		}
+		albums = append(albums, alb)
+	}
+
+	return albums, nil
+}
+
 //// AlbumsByArtist queries for albums that have the specified artist name.
 //func AlbumsByArtist(name string) ([]Album, error) {
 //	var albums []Album
