@@ -3,17 +3,12 @@ package main
 import (
 	"MusicPlayer/data_access"
 	"MusicPlayer/gui"
-	"fmt"
+	"MusicPlayer/playback"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
-	"github.com/gopxl/beep/flac"
-	"github.com/gopxl/beep/speaker"
 	"github.com/machinebox/graphql"
-	"log"
-	"os"
-	"time"
 )
 
 var request = graphql.NewRequest(``)
@@ -21,6 +16,9 @@ var request = graphql.NewRequest(``)
 func main() {
 	data_access.EstablishConnection()
 	go data_access.LoadHomeAlbums()
+
+	fileName := "C:\\Users\\Asus\\Music\\MusicPlayer\\Gladiator Soundtrack\\17. Now We Are Free.flac"
+	go playback.PlayAudio(fileName)
 
 	//client := graphql.NewClient("http://localhost:3000/graphbrainz")
 	//go func() {
@@ -32,19 +30,6 @@ func main() {
 	//	fmt.Println(art)
 	//}()
 
-	// Load the FLAC file
-	Mfile, _ := os.Open(gui.MfilePath)
-	Meta, _ := data_access.ReadTags(Mfile, &gui.MfilePath)
-	fmt.Println(Meta.Genre())
-
-	Streamer, Format, _ := flac.Decode(Mfile)
-	defer Streamer.Close()
-
-	// Initialize the speaker
-	if err := speaker.Init(Format.SampleRate, Format.SampleRate.N(time.Second/10)); err != nil {
-		log.Fatal(err)
-	}
-
 	a := app.New()
 	w := a.NewWindow("Music Player")
 
@@ -52,12 +37,12 @@ func main() {
 	header := gui.CreateHeader()
 	mainContent := container.New(layout.NewStackLayout())
 	navPanel := gui.CreateNavPanel(mainContent)
-	playerControls := gui.CreatePlayerControls(&Streamer, &Format)
+	playerControls := gui.CreatePlayerControls()
 
 	mainLayout := container.NewBorder(header, playerControls, navPanel, nil, mainContent)
 
 	w.SetContent(mainLayout)
-	w.Resize(fyne.NewSize(800, 600))
+	w.Resize(fyne.NewSize(960, 540))
 
 	w.ShowAndRun()
 }
