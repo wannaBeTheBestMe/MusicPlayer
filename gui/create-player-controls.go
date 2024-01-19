@@ -34,7 +34,6 @@ func CreatePlayerControls() *fyne.Container {
 
 	skipNext := widget.NewButtonWithIcon("", theme.MediaSkipNextIcon(), nil)
 
-	//isLooped := false
 	loopButton := widget.NewButton("Loop", nil)
 	loopButton.OnTapped = func() {
 		if loopButton.Importance == widget.MediumImportance {
@@ -80,17 +79,14 @@ func CreatePlayerControls() *fyne.Container {
 	pos := 0.0
 	playbackPos := binding.BindFloat(&pos)
 	duration := time.Duration(playback.GetTotalLength(playback.PDecoder)) * time.Second
-	formattedDuration := formatTime(duration)
+	formattedDuration := FormatTime(duration)
 	playbackDurLabel := widget.NewLabel(formattedDuration)
 
 	playbackSlider := widget.NewSliderWithData(0, duration.Seconds(), playbackPos)
 	playbackSlider.Step = 0.01
-	//position := func() int {
-	//	return (*streamer).Position()
-	//}()
 	elapsed := time.Duration(playback.GetCurrentPosition(playback.PDecoder)) * time.Second
 	playbackPosText := binding.NewString()
-	playbackPosText.Set(formatTime(elapsed))
+	playbackPosText.Set(FormatTime(elapsed))
 	playbackPosLabel := widget.NewLabelWithData(playbackPosText)
 
 	playbackSlider.OnChanged = func(t float64) {
@@ -108,13 +104,10 @@ func CreatePlayerControls() *fyne.Container {
 
 	go func() {
 		for range time.NewTicker(200 * time.Millisecond).C {
-			//position = func() int {
-			//	return (*streamer).Position()
-			//}()
 			elapsed = time.Duration(playback.GetCurrentPosition(playback.PDecoder)) * time.Second
 			pos = elapsed.Seconds()
 			playbackPos.Reload()
-			playbackPosText.Set(formatTime(elapsed))
+			playbackPosText.Set(FormatTime(elapsed))
 		}
 	}()
 
@@ -126,7 +119,7 @@ func CreatePlayerControls() *fyne.Container {
 	return mediaControls
 }
 
-func formatTime(duration time.Duration) string {
+func FormatTime(duration time.Duration) string {
 	totalSeconds := int(duration.Seconds())
 	minutes := totalSeconds / 60
 	seconds := totalSeconds % 60

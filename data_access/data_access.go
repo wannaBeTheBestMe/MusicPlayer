@@ -62,6 +62,7 @@ type Track struct {
 	PictureData        []byte
 	Lyrics             string
 	Comment            string
+	Filepath           string
 	Valid              bool
 }
 
@@ -83,15 +84,13 @@ func BatchAddTracks(dir string) {
 		log.Fatal(err)
 	}
 
-	//var wg sync.WaitGroup
 	for _, file := range files {
 		if file.IsDir() {
 			BatchAddTracks(filepath.Join(dir, file.Name()))
 		} else {
-			//wg.Add(1)
 			func(filename string) {
-				//defer wg.Done()
-				currTrack := CreateTrackFromFile(filepath.Join(dir, filename))
+				pathToTrack := filepath.Join(dir, filename)
+				currTrack := CreateTrackFromFile(pathToTrack)
 				_, err := AddTrack(currTrack)
 				if err != nil {
 					fmt.Println(err)
@@ -109,20 +108,16 @@ func AddTrack(track Track) (int64, error) {
 		return 0, fmt.Errorf("AddTrack: %v is not a valid track, skipping", track)
 	}
 
-	result, err := DB.Exec(`
+	queryString := `
 INSERT INTO Tracks
-	(Format, FileType, Title, Album, Artist,
-	 AlbumArtist, Composer, Year, Genre,
-	 TrackNum, TrackTotal, DiscNum, DiscTotal,
-	 PictureExt, PictureMIMEType, PictureType,
-	 PictureDescription, PictureData, Lyrics, Comment)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		&track.Format, &track.FileType, &track.Title, &track.Album, &track.Artist,
-		&track.AlbumArtist, &track.Composer, &track.Year, &track.Genre,
-		&track.TrackNum, &track.TrackTotal, &track.DiscNum, &track.DiscTotal,
-		&track.PictureExt, &track.PictureMIMEType, &track.PictureType,
-		&track.PictureDescription, &track.PictureData, &track.Lyrics,
-		&track.Comment)
+	(Format, FileType, Title, Album, Artist, AlbumArtist, Composer, Year, Genre, TrackNum, TrackTotal, DiscNum, DiscTotal,
+	 PictureExt, PictureMIMEType, PictureType, PictureDescription, PictureData, Lyrics, Comment, Filepath)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+	result, err := DB.Exec(queryString,
+		&track.Format, &track.FileType, &track.Title, &track.Album, &track.Artist, &track.AlbumArtist, &track.Composer,
+		&track.Year, &track.Genre, &track.TrackNum, &track.TrackTotal, &track.DiscNum, &track.DiscTotal, &track.PictureExt,
+		&track.PictureMIMEType, &track.PictureType, &track.PictureDescription, &track.PictureData, &track.Lyrics,
+		&track.Comment, &track.Filepath)
 
 	if err != nil {
 		return 0, fmt.Errorf("AddTrack: %v", err)
@@ -175,6 +170,7 @@ func CreateTrackFromFile(filePath string) Track {
 		PictureData:        pic.Data,
 		Lyrics:             tags.Lyrics(),
 		Comment:            tags.Comment(),
+		Filepath:           filePath,
 		Valid:              true,
 	}
 	return track
@@ -229,6 +225,31 @@ type Album struct {
 	PictureData []byte
 }
 
+func GetTracksInAlbum(album Album) ([]Track, error) {
+	var tracks []Track
+
+	queryString := `SELECT * FROM tracks WHERE Album = ?`
+	rows, err := DB.Query(queryString, &album.Title)
+	if err != nil {
+		return nil, fmt.Errorf("GetTracksInAlbum: %v", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var track Track
+		err := rows.Scan(&track.ID, &track.Format, &track.FileType, &track.Title, &track.Album, &track.Artist,
+			&track.AlbumArtist, &track.Composer, &track.Year, &track.Genre, &track.TrackNum, &track.TrackTotal,
+			&track.DiscNum, &track.DiscTotal, &track.PictureExt, &track.PictureMIMEType, &track.PictureType,
+			&track.PictureDescription, &track.PictureData, &track.Lyrics, &track.Comment, &track.Filepath)
+		if err != nil {
+			return nil, fmt.Errorf("GetTracksInAlbum: %v", err)
+		}
+		tracks = append(tracks, track)
+	}
+
+	return tracks, nil
+}
+
 var HomeAlbumsLoaded = false
 var HomeAlbumsArr []Album
 
@@ -246,7 +267,7 @@ func LoadHomeAlbums() error {
 func HomeAlbums() ([]Album, error) {
 	var albums []Album
 
-	var HomeQueryString = `
+	queryString := `
 SELECT t.id AS FirstTrackId, t.Album, t.AlbumArtist, t.PictureData
 FROM tracks t
 INNER JOIN (
@@ -255,7 +276,7 @@ INNER JOIN (
     GROUP BY Album
 ) AS sub ON t.id = sub.MinId
 ORDER BY t.Album;`
-	rows, err := DB.Query(HomeQueryString)
+	rows, err := DB.Query(queryString)
 	if err != nil {
 		return nil, fmt.Errorf("HomeAlbums: %v", err)
 	}

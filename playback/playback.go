@@ -1,11 +1,17 @@
 package playback
 
-//#include <main.h>
 import "C"
 import (
+	"fmt"
 	"log"
 	"unsafe"
 )
+
+//#include <main.h>
+//static void print_string(const char* str) {
+//    printf("%s\n", str);
+//}
+import "C"
 
 var PDecoder *C.ma_decoder
 var PDevice *C.ma_device
@@ -16,45 +22,73 @@ func PlayAudio(fileName string) {
 
 	PDecoder = C.create_decoder(file_name)
 	if PDecoder == nil {
-		log.Fatal("Could not create decoder")
+		log.Fatal("PlayAudio: Could not create decoder")
 	}
-	defer C.destroy_decoder(PDecoder)
 
 	PDevice = C.play_audio(file_name, PDecoder)
 	if PDevice == nil {
-		log.Fatal("PDevice is nil")
+		log.Fatal("PlayAudio: PDevice is nil")
 	}
-	defer C.free(unsafe.Pointer(PDevice))
-	defer C.ma_device_uninit(PDevice)
+
+	defer CleanCP()
 
 	PauseAudio(PDevice)
 	select {}
+}
+
+func CleanCP() {
+	if PDevice != nil {
+		C.ma_device_uninit(PDevice)
+		C.free(unsafe.Pointer(PDevice))
+		PDevice = nil
+	}
+	if PDecoder != nil {
+		C.destroy_decoder(PDecoder)
+		PDecoder = nil
+	}
 }
 
 func SetSilent(silent bool) {
 	C.set_silent(C.bool(silent))
 }
 
-func GetCurrentPosition(PDecoder *C.ma_decoder) float64 {
-	return float64(C.get_current_position(PDecoder))
+func GetCurrentPosition(pDecoder *C.ma_decoder) float64 {
+	return float64(C.get_current_position(pDecoder))
 }
 
-func GetTotalLength(PDecoder *C.ma_decoder) float64 {
-	return float64(C.get_total_length(PDecoder))
+func GetTotalLength(pDecoder *C.ma_decoder) float64 {
+	return float64(C.get_total_length(pDecoder))
 }
 
-func PauseAudio(PDevice *C.ma_device) {
-	C.pause_audio(PDevice)
+func PauseAudio(pDevice *C.ma_device) {
+	C.pause_audio(pDevice)
 }
 
-func ResumeAudio(PDevice *C.ma_device) {
-	C.resume_audio(PDevice)
+func ResumeAudio(pDevice *C.ma_device) {
+	C.resume_audio(pDevice)
 }
 
-func SeekToTime(PDecoder *C.ma_decoder, s uint64) {
-	C.seek_to_time(PDecoder, C.ulonglong(s))
+func SeekToTime(pDecoder *C.ma_decoder, s uint64) {
+	C.seek_to_time(pDecoder, C.ulonglong(s))
 }
 
 func SetVolume(volume float32) {
 	C.set_volume(C.float(volume))
+}
+
+func GetTotalLengthFromPath(fileName string) float64 {
+	file_name := C.CString(fileName)
+	//if fileName == "C:\\Users\\Asus\\Music\\MusicPlayer\\Vangelis - Juno to Jupiter (2021) [24 Bit Hi-Res]\\01. Vangelis- Atlas’ push.flac" {
+	//	C.print_string(file_name)
+	//}
+	defer C.free(unsafe.Pointer(file_name))
+
+	pDecoder := C.create_decoder(file_name)
+	if pDecoder == nil {
+		fmt.Println("GetTotalLengthFromPath: Could not create decoder")
+		return 0
+	}
+	defer C.destroy_decoder(pDecoder)
+
+	return GetTotalLength(pDecoder)
 }

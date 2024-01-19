@@ -7,38 +7,85 @@ import (
 	"fyne.io/fyne/v2/widget"
 )
 
+var currentView = "Home"
+
+var MainContent *fyne.Container
+
+var homeButton, exploreButton, libraryButton *widget.Button
+
+// UpdateContent simulates navigation by updating the main area
+func UpdateContent(mainContent *fyne.Container, content fyne.CanvasObject) {
+	mainContent.Objects = []fyne.CanvasObject{content}
+	mainContent.Refresh()
+}
+
 func CreateNavPanel(mainContent *fyne.Container) *fyne.Container {
-	currentView := ""
+	UpdateContent(mainContent, CreateHomeView())
 
-	// Function to update main content (simulating navigation)
-	updateContent := func(content fyne.CanvasObject) {
-		mainContent.Objects = []fyne.CanvasObject{content}
-		mainContent.Refresh()
-	}
+	homeButton = widget.NewButton("Home", nil)
+	exploreButton = widget.NewButton("Explore", nil)
+	libraryButton = widget.NewButton("Library", nil)
 
-	updateContent(CreateCardGridScroll())
+	homeButton.Importance = widget.HighImportance
 
 	navPanel := container.NewVBox(
-		widget.NewButton("Home", func() {
-			if currentView != "Home" {
-				currentView = "Home"
-				updateContent(CreateCardGridScroll())
-			}
-		}),
-		widget.NewButton("Explore", func() {
-			if currentView != "Explore" {
-				currentView = "Explore"
-				updateContent(widget.NewLabel("Explore View"))
-			}
-		}),
-		widget.NewButton("Library", func() {
-			if currentView != "Library" {
-				currentView = "Library"
-				updateContent(widget.NewLabel("Library View"))
-			}
-		}),
+		homeButton,
+		exploreButton,
+		libraryButton,
 		widget.NewButtonWithIcon("", theme.ContentAddIcon(), nil),
 	)
+
+	homeButton.OnTapped = func() {
+		if currentView == "Home" {
+			return
+		}
+
+		UpdateContent(mainContent, CreateHomeView())
+
+		currentView = "Home"
+		homeButton.Importance = widget.HighImportance
+		exploreButton.Importance = widget.MediumImportance
+		libraryButton.Importance = widget.MediumImportance
+		homeButton.Refresh()
+		exploreButton.Refresh()
+		libraryButton.Refresh()
+	}
+
+	exploreButton.OnTapped = func() {
+		if currentView == "Explore" {
+			return
+		}
+
+		UpdateContent(mainContent, widget.NewLabel("Explore View"))
+
+		currentView = "Explore"
+		homeButton.Importance = widget.MediumImportance
+		exploreButton.Importance = widget.HighImportance
+		libraryButton.Importance = widget.MediumImportance
+		homeButton.Refresh()
+		exploreButton.Refresh()
+		libraryButton.Refresh()
+	}
+
+	libraryButton.OnTapped = func() {
+		if currentView == "Library" {
+			return
+		}
+
+		if LastLibraryViewAlbum.ID == 0 {
+			UpdateContent(mainContent, widget.NewLabel("Select an album from the home view to see tracks here."))
+		} else {
+			UpdateContent(mainContent, CreateLibraryView(LastLibraryViewAlbum))
+		}
+
+		currentView = "Library"
+		homeButton.Importance = widget.MediumImportance
+		exploreButton.Importance = widget.MediumImportance
+		libraryButton.Importance = widget.HighImportance
+		homeButton.Refresh()
+		exploreButton.Refresh()
+		libraryButton.Refresh()
+	}
 
 	return navPanel
 }

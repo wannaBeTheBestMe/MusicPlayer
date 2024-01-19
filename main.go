@@ -35,11 +35,11 @@ func main() {
 
 	gui.Menubar(&w, &a)
 	header := gui.CreateHeader()
-	mainContent := container.New(layout.NewStackLayout())
-	navPanel := gui.CreateNavPanel(mainContent)
+	gui.MainContent = container.New(layout.NewStackLayout())
+	navPanel := gui.CreateNavPanel(gui.MainContent)
 	playerControls := gui.CreatePlayerControls()
 
-	mainLayout := container.NewBorder(header, playerControls, navPanel, nil, mainContent)
+	mainLayout := container.NewBorder(header, playerControls, navPanel, nil, gui.MainContent)
 
 	w.SetContent(mainLayout)
 	w.Resize(fyne.NewSize(960, 540))
