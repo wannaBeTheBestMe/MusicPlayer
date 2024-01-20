@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/theme"
@@ -15,6 +16,9 @@ var homeButton, exploreButton, libraryButton *widget.Button
 
 // UpdateContent simulates navigation by updating the main area
 func UpdateContent(mainContent *fyne.Container, content fyne.CanvasObject) {
+	if currentView == "Library" {
+		fmt.Println("2")
+	}
 	mainContent.Objects = []fyne.CanvasObject{content}
 	mainContent.Refresh()
 }
@@ -56,7 +60,11 @@ func CreateNavPanel(mainContent *fyne.Container) *fyne.Container {
 			return
 		}
 
-		UpdateContent(mainContent, widget.NewLabel("Explore View"))
+		if LastLibraryViewAlbum.ID == 0 {
+			UpdateContent(mainContent, widget.NewLabel("Select an album from the home view to see more about the artist."))
+		} else {
+			UpdateContent(mainContent, CreateExploreView())
+		}
 
 		currentView = "Explore"
 		homeButton.Importance = widget.MediumImportance

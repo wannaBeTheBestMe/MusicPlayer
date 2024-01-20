@@ -3,15 +3,13 @@ package main
 import (
 	"MusicPlayer/data_access"
 	"MusicPlayer/gui"
+	app_icon "MusicPlayer/icon"
 	"MusicPlayer/playback"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
-	"github.com/machinebox/graphql"
 )
-
-var request = graphql.NewRequest(``)
 
 func main() {
 	data_access.EstablishConnection()
@@ -20,18 +18,11 @@ func main() {
 	fileName := "C:\\Users\\Asus\\Music\\MusicPlayer\\Gladiator Soundtrack\\17. Now We Are Free.flac"
 	go playback.PlayAudio(fileName)
 
-	//client := graphql.NewClient("http://localhost:3000/graphbrainz")
-	//go func() {
-	//	api.MetadataRequest(client, request)
-	//}()
-
-	//go func() {
-	//	art, _ := caa.GetReleaseGroup("5e62fe2c-28d3-3508-9a5c-b6fe2fd4ca7a")
-	//	fmt.Println(art)
-	//}()
-
 	a := app.New()
-	w := a.NewWindow("Music Player")
+	w := a.NewWindow("MusicPlayer")
+
+	icon, _ := app_icon.LoadResourceFromPath("icon/icon2.png")
+	w.SetIcon(icon)
 
 	gui.Menubar(&w, &a)
 	header := gui.CreateHeader()

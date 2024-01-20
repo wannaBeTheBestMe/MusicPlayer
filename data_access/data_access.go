@@ -99,8 +99,6 @@ func BatchAddTracks(dir string) {
 			}(file.Name())
 		}
 	}
-
-	//wg.Wait()
 }
 
 func AddTrack(track Track) (int64, error) {
