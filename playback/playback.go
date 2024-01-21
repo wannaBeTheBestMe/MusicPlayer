@@ -4,6 +4,7 @@ import "C"
 import (
 	"fmt"
 	"log"
+	"sync"
 	"unsafe"
 )
 
@@ -13,7 +14,11 @@ import (
 //}
 import "C"
 
-var PDecoder *C.ma_decoder
+var (
+	PDMu     sync.Mutex
+	PDecoder *C.ma_decoder
+)
+
 var PDevice *C.ma_device
 
 func PlayAudio(fileName string) {
@@ -57,6 +62,9 @@ func GetCurrentPosition(pDecoder *C.ma_decoder) float64 {
 }
 
 func GetTotalLength(pDecoder *C.ma_decoder) float64 {
+	PDMu.Lock()
+	defer PDMu.Unlock()
+
 	return float64(C.get_total_length(pDecoder))
 }
 
@@ -69,6 +77,9 @@ func ResumeAudio(pDevice *C.ma_device) {
 }
 
 func SeekToTime(pDecoder *C.ma_decoder, s uint64) {
+	PDMu.Lock()
+	defer PDMu.Unlock()
+
 	C.seek_to_time(pDecoder, C.ulonglong(s))
 }
 

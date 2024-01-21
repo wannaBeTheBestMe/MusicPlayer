@@ -11,6 +11,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // https://go.dev/doc/tutorial/database-access
@@ -63,6 +64,7 @@ type Track struct {
 	Lyrics             string
 	Comment            string
 	Filepath           string
+	Freq               int
 	Valid              bool
 }
 
@@ -78,6 +80,18 @@ func GetAlbumDirectories() {
 	}
 }
 
+func IncrementTrackFreq(track Track) error {
+	queryString := `UPDATE tracks SET Freq = Freq + 1 WHERE id = ?`
+
+	_, err := DB.Exec(queryString, &track.ID)
+
+	if err != nil {
+		return fmt.Errorf("IncrementTrackFreq: %v", err)
+	}
+
+	return nil
+}
+
 func BatchAddTracks(dir string) {
 	files, err := os.ReadDir(dir)
 	if err != nil {
@@ -90,7 +104,7 @@ func BatchAddTracks(dir string) {
 		} else {
 			func(filename string) {
 				pathToTrack := filepath.Join(dir, filename)
-				currTrack := CreateTrackFromFile(pathToTrack)
+				currTrack := CreateTrackFromFile(pathToTrack, dir)
 				_, err := AddTrack(currTrack)
 				if err != nil {
 					fmt.Println(err)
@@ -127,7 +141,47 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 	return id, nil
 }
 
-func CreateTrackFromFile(filePath string) Track {
+// isImageFile checks if a file is an image based on its extension.
+func isImageFile(filename string) bool {
+	// List of image file extensions
+	imageExtensions := []string{".jpg", ".jpeg", ".JPG", ".JPEG"}
+
+	for _, ext := range imageExtensions {
+		if strings.HasSuffix(strings.ToLower(filename), ext) {
+			return true
+		}
+	}
+	return false
+}
+
+// getImage checks if a directory contains at least one image file.
+func getImage(directory string) (*tag.Picture, error) {
+	var picName string
+
+	err := filepath.WalkDir(directory, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return fmt.Errorf("getImage: %v", err) // Propagate the error
+		}
+		if !d.IsDir() && isImageFile(d.Name()) {
+			picName = d.Name()
+			return fs.SkipDir // No need to continue once an image is found
+		}
+		return nil
+	})
+
+	picBytes, _ := os.ReadFile(filepath.Join(directory, picName))
+	pic := tag.Picture{
+		Ext:         filepath.Ext(picName),
+		MIMEType:    "image/jpeg",
+		Type:        "",
+		Description: "",
+		Data:        picBytes,
+	}
+
+	return &pic, err
+}
+
+func CreateTrackFromFile(filePath string, dir string) Track {
 	f, err := os.Open(filePath)
 	if err != nil {
 		log.Printf("Error opening file %s: %v", filePath, err)
@@ -146,31 +200,49 @@ func CreateTrackFromFile(filePath string) Track {
 
 	trackNum, trackTotal := tags.Track()
 	discNum, discTotal := tags.Disc()
-	pic := tags.Picture()
+
 	track := Track{
-		Format:             string(tags.Format()),
-		FileType:           string(tags.FileType()),
-		Title:              tags.Title(),
-		Album:              tags.Album(),
-		Artist:             tags.Artist(),
-		AlbumArtist:        tags.AlbumArtist(),
-		Composer:           tags.Composer(),
-		Year:               tags.Year(),
-		Genre:              tags.Genre(),
-		TrackNum:           trackNum,
-		TrackTotal:         trackTotal,
-		DiscNum:            discNum,
-		DiscTotal:          discTotal,
-		PictureExt:         pic.Ext,
-		PictureMIMEType:    pic.MIMEType,
-		PictureType:        pic.Type,
-		PictureDescription: pic.Description,
-		PictureData:        pic.Data,
-		Lyrics:             tags.Lyrics(),
-		Comment:            tags.Comment(),
-		Filepath:           filePath,
-		Valid:              true,
+		Format:      string(tags.Format()),
+		FileType:    string(tags.FileType()),
+		Title:       tags.Title(),
+		Album:       tags.Album(),
+		Artist:      tags.Artist(),
+		AlbumArtist: tags.AlbumArtist(),
+		Composer:    tags.Composer(),
+		Year:        tags.Year(),
+		Genre:       tags.Genre(),
+		TrackNum:    trackNum,
+		TrackTotal:  trackTotal,
+		DiscNum:     discNum,
+		DiscTotal:   discTotal,
+		Lyrics:      tags.Lyrics(),
+		Comment:     tags.Comment(),
+		Filepath:    filePath,
+		Freq:        0,
+		Valid:       true,
 	}
+
+	pic := tags.Picture()
+	if pic != nil {
+		track.PictureExt = pic.Ext
+		track.PictureMIMEType = pic.MIMEType
+		track.PictureType = pic.Type
+		track.PictureDescription = pic.Description
+		track.PictureData = pic.Data
+
+		return track
+	}
+
+	folderPic, err := getImage(dir)
+	if err != nil {
+		log.Fatal(err)
+	}
+	track.PictureExt = folderPic.Ext
+	track.PictureMIMEType = folderPic.MIMEType
+	track.PictureType = folderPic.Type
+	track.PictureDescription = folderPic.Description
+	track.PictureData = folderPic.Data
+
 	return track
 }
 
@@ -238,7 +310,7 @@ func GetTracksInAlbum(album Album) ([]Track, error) {
 		err := rows.Scan(&track.ID, &track.Format, &track.FileType, &track.Title, &track.Album, &track.Artist,
 			&track.AlbumArtist, &track.Composer, &track.Year, &track.Genre, &track.TrackNum, &track.TrackTotal,
 			&track.DiscNum, &track.DiscTotal, &track.PictureExt, &track.PictureMIMEType, &track.PictureType,
-			&track.PictureDescription, &track.PictureData, &track.Lyrics, &track.Comment, &track.Filepath)
+			&track.PictureDescription, &track.PictureData, &track.Lyrics, &track.Comment, &track.Filepath, &track.Freq)
 		if err != nil {
 			return nil, fmt.Errorf("GetTracksInAlbum: %v", err)
 		}

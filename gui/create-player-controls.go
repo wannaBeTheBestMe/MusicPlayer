@@ -15,6 +15,8 @@ import (
 	"time"
 )
 
+var trackDuration time.Duration
+
 var vol float64
 
 func CreatePlayerControls() *fyne.Container {
@@ -76,22 +78,22 @@ func CreatePlayerControls() *fyne.Container {
 
 	mediaButtonsCen := container.NewHBox(volumeSliderCont, layout.NewSpacer(), mediaButtons, layout.NewSpacer(), mySpacer)
 
-	pos := 0.0
-	playbackPos := binding.BindFloat(&pos)
-	duration := time.Duration(playback.GetTotalLength(playback.PDecoder)) * time.Second
-	formattedDuration := FormatTime(duration)
-	playbackDurLabel := widget.NewLabel(formattedDuration)
+	trackDuration = time.Duration(playback.GetTotalLength(playback.PDecoder)) * time.Second
+	playbackDurLabel := widget.NewLabel(FormatTime(trackDuration))
 
-	playbackSlider := widget.NewSliderWithData(0, duration.Seconds(), playbackPos)
-	playbackSlider.Step = 0.01
 	elapsed := time.Duration(playback.GetCurrentPosition(playback.PDecoder)) * time.Second
-	playbackPosText := binding.NewString()
-	playbackPosText.Set(FormatTime(elapsed))
-	playbackPosLabel := widget.NewLabelWithData(playbackPosText)
+	playbackPosLabel := widget.NewLabel(FormatTime(elapsed))
 
-	playbackSlider.OnChanged = func(t float64) {
-		if math.Abs(t-elapsed.Seconds()) > 0.1 {
+	percent := elapsed.Seconds() / trackDuration.Seconds()
+
+	playbackSlider := widget.NewSlider(0, 1)
+	playbackSlider.Step = 0.001
+	playbackSlider.OnChanged = func(percentT float64) {
+		t := percentT * trackDuration.Seconds()
+		if math.Abs(t-elapsed.Seconds()) > 0.2 {
+			playback.PauseAudio(playback.PDevice)
 			playback.SeekToTime(playback.PDecoder, uint64(t/2)) // Using t/2 is necessary here, incredibly strange...
+			playback.ResumeAudio(playback.PDevice)
 		}
 	}
 
@@ -105,9 +107,14 @@ func CreatePlayerControls() *fyne.Container {
 	go func() {
 		for range time.NewTicker(200 * time.Millisecond).C {
 			elapsed = time.Duration(playback.GetCurrentPosition(playback.PDecoder)) * time.Second
-			pos = elapsed.Seconds()
-			playbackPos.Reload()
-			playbackPosText.Set(FormatTime(elapsed))
+			playbackPosLabel.SetText(FormatTime(elapsed))
+
+			trackDuration = time.Duration(playback.GetTotalLength(playback.PDecoder)) * time.Second
+			playbackDurLabel.SetText(FormatTime(trackDuration))
+
+			percent = elapsed.Seconds() / trackDuration.Seconds()
+			playbackSlider.SetValue(percent)
+			playbackSlider.Refresh()
 		}
 	}()
 

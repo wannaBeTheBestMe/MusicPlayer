@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -12,7 +11,7 @@ var currentView = "Home"
 
 var MainContent *fyne.Container
 
-var homeButton, exploreButton, libraryButton *widget.Button
+var homeButton, exploreButton, libraryButton, suggestButton *widget.Button
 
 // UpdateContent simulates navigation by updating the main area
 func UpdateContent(mainContent *fyne.Container, content fyne.CanvasObject) {
@@ -29,6 +28,7 @@ func CreateNavPanel(mainContent *fyne.Container) *fyne.Container {
 	homeButton = widget.NewButton("Home", nil)
 	exploreButton = widget.NewButton("Explore", nil)
 	libraryButton = widget.NewButton("Library", nil)
+	suggestButton = widget.NewButton("Suggest", nil)
 
 	homeButton.Importance = widget.HighImportance
 
@@ -36,7 +36,8 @@ func CreateNavPanel(mainContent *fyne.Container) *fyne.Container {
 		homeButton,
 		exploreButton,
 		libraryButton,
-		widget.NewButtonWithIcon("", theme.ContentAddIcon(), nil),
+		suggestButton,
+		//widget.NewButtonWithIcon("", theme.ContentAddIcon(), nil),
 	)
 
 	homeButton.OnTapped = func() {
@@ -50,9 +51,11 @@ func CreateNavPanel(mainContent *fyne.Container) *fyne.Container {
 		homeButton.Importance = widget.HighImportance
 		exploreButton.Importance = widget.MediumImportance
 		libraryButton.Importance = widget.MediumImportance
+		suggestButton.Importance = widget.MediumImportance
 		homeButton.Refresh()
 		exploreButton.Refresh()
 		libraryButton.Refresh()
+		suggestButton.Refresh()
 	}
 
 	exploreButton.OnTapped = func() {
@@ -70,9 +73,11 @@ func CreateNavPanel(mainContent *fyne.Container) *fyne.Container {
 		homeButton.Importance = widget.MediumImportance
 		exploreButton.Importance = widget.HighImportance
 		libraryButton.Importance = widget.MediumImportance
+		suggestButton.Importance = widget.MediumImportance
 		homeButton.Refresh()
 		exploreButton.Refresh()
 		libraryButton.Refresh()
+		suggestButton.Refresh()
 	}
 
 	libraryButton.OnTapped = func() {
@@ -90,9 +95,30 @@ func CreateNavPanel(mainContent *fyne.Container) *fyne.Container {
 		homeButton.Importance = widget.MediumImportance
 		exploreButton.Importance = widget.MediumImportance
 		libraryButton.Importance = widget.HighImportance
+		suggestButton.Importance = widget.MediumImportance
 		homeButton.Refresh()
 		exploreButton.Refresh()
 		libraryButton.Refresh()
+		suggestButton.Refresh()
+	}
+
+	suggestButton.OnTapped = func() {
+		if currentView == "Suggest" {
+			return
+		}
+
+		UpdateContent(mainContent, CreateSuggestView())
+
+		currentView = "Suggest"
+		currentView = "Library"
+		homeButton.Importance = widget.MediumImportance
+		exploreButton.Importance = widget.MediumImportance
+		libraryButton.Importance = widget.MediumImportance
+		suggestButton.Importance = widget.HighImportance
+		homeButton.Refresh()
+		exploreButton.Refresh()
+		libraryButton.Refresh()
+		suggestButton.Refresh()
 	}
 
 	return navPanel

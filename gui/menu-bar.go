@@ -31,7 +31,12 @@ func Menubar(myWindow *fyne.Window, myApp *fyne.App) {
 
 	importMenu := fyne.NewMenu("Import",
 		fyne.NewMenuItem("Import tracks to database",
-			func() { data_access.BatchAddTracks("C:\\Users\\Asus\\Music\\MusicPlayer") }),
+			func() {
+				data_access.BatchAddTracks("C:\\Users\\Asus\\Music\\MusicPlayer")
+				dialog.ShowInformation("Import tracks to database",
+					"All tracks in the MusicPlayer directory have been imported. "+
+						"Please restart the application to see them.", *myWindow)
+			}),
 	)
 
 	// Create the main menu with the menus

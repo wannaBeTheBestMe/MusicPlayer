@@ -92,8 +92,13 @@ func CreateLibraryView(alb data_access.Album) *container.Scroll {
 		playback.PauseAudio(playback.PDevice)
 		playback.CleanCP()
 		go playback.PlayAudio(fmt.Sprintf("%s", track.Filepath))
-		playback.PauseAudio(playback.PDevice)
+		//playback.PauseAudio(playback.PDevice)
 		playback.ResumeAudio(playback.PDevice)
+
+		err := data_access.IncrementTrackFreq(track)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	return container.NewScroll(trackList)
@@ -241,4 +246,9 @@ func createImgCard(alb data_access.Album) *fyne.Container {
 	overlay := container.NewStack(button, card)
 
 	return overlay
+}
+
+func CreateSuggestView() *container.Scroll {
+
+	return container.NewScroll(container.NewVBox())
 }
