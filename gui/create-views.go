@@ -32,6 +32,9 @@ var APIResp api.ArtistInfoQuery
 var APIRespChan = make(chan bool)
 
 var LastLibraryViewAlbum data_access.Album
+var currentTrack data_access.Track
+
+var trackList *widget.List
 
 func CreateHomeView() *container.Scroll {
 	currentView = "Home"
@@ -66,7 +69,7 @@ func CreateLibraryView(alb data_access.Album) *container.Scroll {
 		log.Fatal(err)
 	}
 
-	trackList := widget.NewList(
+	trackList = widget.NewList(
 		func() int {
 			return len(tracks)
 		},
@@ -98,6 +101,9 @@ func CreateLibraryView(alb data_access.Album) *container.Scroll {
 
 	trackList.OnSelected = func(num widget.ListItemID) {
 		track := tracks[num]
+		currentTrack = track
+		//fmt.Println(currentTrack)
+
 		playback.PauseAudio(playback.PDevice)
 		playback.CleanCP()
 		go playback.PlayAudio(fmt.Sprintf("%s", track.Filepath))

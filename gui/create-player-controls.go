@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"MusicPlayer/data_access"
 	"MusicPlayer/playback"
 	"fmt"
 	"fyne.io/fyne/v2"
@@ -11,6 +12,7 @@ import (
 	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"image/color"
+	"log"
 	"math"
 	"time"
 )
@@ -19,11 +21,36 @@ var trackDuration time.Duration
 
 var vol float64
 
-func CreatePlayerControls() *fyne.Container {
+func CreatePlayerControls(myWindow *fyne.Window) *fyne.Container {
 	skipPrevious := widget.NewButtonWithIcon("", theme.MediaSkipPreviousIcon(), nil)
+	skipPrevOnTapped := func() {
+		if LastLibraryViewAlbum.ID == 0 || currentTrack.ID == 0 {
+			return
+		}
+
+		tracks, err := data_access.GetTracksInAlbum(LastLibraryViewAlbum)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for trackNum, track := range tracks {
+			if currentTrack.ID == track.ID {
+				currentTrack = tracks[trackNum-1]
+				trackList.UnselectAll()
+				trackList.Select(trackNum - 1)
+				break
+			}
+		}
+	}
+	skipPrevious.OnTapped = skipPrevOnTapped
+	(*myWindow).Canvas().SetOnTypedKey(func(keyEvent *fyne.KeyEvent) {
+		if keyEvent.Name == fyne.KeyP {
+			skipPrevOnTapped()
+		}
+	})
 
 	playPauseButton := widget.NewButtonWithIcon("", theme.MediaPlayIcon(), nil)
-	playPauseButton.OnTapped = func() {
+	playPauseOnTapped := func() {
 		if playPauseButton.Icon == theme.MediaPlayIcon() {
 			playPauseButton.SetIcon(theme.MediaPauseIcon())
 			playback.ResumeAudio(playback.PDevice)
@@ -33,15 +60,62 @@ func CreatePlayerControls() *fyne.Container {
 		}
 		playPauseButton.Refresh()
 	}
+	playPauseButton.OnTapped = playPauseOnTapped
+	(*myWindow).Canvas().SetOnTypedKey(func(keyEvent *fyne.KeyEvent) {
+		if keyEvent.Name == fyne.KeySpace {
+			playPauseOnTapped()
+		}
+	})
 
 	skipNext := widget.NewButtonWithIcon("", theme.MediaSkipNextIcon(), nil)
+	skipNextOnTapped := func() {
+		if LastLibraryViewAlbum.ID == 0 || currentTrack.ID == 0 {
+			return
+		}
+
+		tracks, err := data_access.GetTracksInAlbum(LastLibraryViewAlbum)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for trackNum, track := range tracks {
+			if currentTrack.ID == track.ID {
+				currentTrack = tracks[trackNum+1]
+				trackList.UnselectAll()
+				trackList.Select(trackNum + 1)
+				break
+			}
+		}
+	}
+	skipNext.OnTapped = skipNextOnTapped
+	(*myWindow).Canvas().SetOnTypedKey(func(keyEvent *fyne.KeyEvent) {
+		if keyEvent.Name == fyne.KeyN {
+			skipNextOnTapped()
+		}
+	})
 
 	loopButton := widget.NewButton("Loop", nil)
 	loopButton.OnTapped = func() {
 		if loopButton.Importance == widget.MediumImportance {
+			if playPauseButton.Icon == theme.MediaPauseIcon() {
+				playback.PauseAudio(playback.PDevice)
+				playback.SetLoopPlayback(true)
+				playback.ResumeAudio(playback.PDevice)
+			} else {
+				playback.SetLoopPlayback(true)
+			}
+
 			loopButton.Importance = widget.HighImportance
 			loopButton.Refresh()
 		} else {
+			if playPauseButton.Icon == theme.MediaPauseIcon() {
+				playback.PauseAudio(playback.PDevice)
+				playback.SetLoopPlayback(false)
+				playback.ResumeAudio(playback.PDevice)
+			} else {
+				playback.SetLoopPlayback(false)
+			}
+
 			loopButton.Importance = widget.MediumImportance
 			loopButton.Refresh()
 		}
@@ -91,9 +165,13 @@ func CreatePlayerControls() *fyne.Container {
 	playbackSlider.OnChanged = func(percentT float64) {
 		t := percentT * trackDuration.Seconds()
 		if math.Abs(t-elapsed.Seconds()) > 0.2 {
-			playback.PauseAudio(playback.PDevice)
-			playback.SeekToTime(playback.PDecoder, uint64(t/2)) // Using t/2 is necessary here, incredibly strange...
-			playback.ResumeAudio(playback.PDevice)
+			if playPauseButton.Icon == theme.MediaPauseIcon() {
+				playback.PauseAudio(playback.PDevice)
+				playback.SeekToTime(playback.PDecoder, uint64(t/2)) // Using t/2 is necessary here, incredibly strange...
+				playback.ResumeAudio(playback.PDevice)
+			} else {
+				playback.SeekToTime(playback.PDecoder, uint64(t/2)) // Using t/2 is necessary here, incredibly strange...
+			}
 		}
 	}
 

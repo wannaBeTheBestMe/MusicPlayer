@@ -567,7 +567,7 @@ type Album struct {
 func GetTracksInAlbum(album Album) ([]Track, error) {
 	var tracks []Track
 
-	queryString := `SELECT * FROM tracks WHERE Album = ?`
+	queryString := `SELECT * FROM tracks WHERE Album = ? ORDER BY TrackNum;`
 	rows, err := DB.Query(queryString, &album.Title)
 	if err != nil {
 		return nil, fmt.Errorf("GetTracksInAlbum: %v", err)

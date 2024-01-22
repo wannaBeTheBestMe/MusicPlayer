@@ -11,6 +11,11 @@
 float g_linear_volume = 1.0;
 static float g_exponential_volume = 1.0;
 static bool g_silent = false;
+static bool g_loop_playback = false;
+
+void set_loop_playback(bool loop_playback) {
+    g_loop_playback = loop_playback;
+}
 
 void set_silent(bool silent) {
     g_silent = silent;
@@ -61,18 +66,41 @@ void set_volume(float volume) {
 void data_callback(ma_device *pDevice, void *pOutput, const void *pInput, ma_uint32 frameCount) {
     ma_decoder *pDecoder = (ma_decoder *) pDevice->pUserData;
     if (pDecoder == NULL) {
+        memset(pOutput, 0, frameCount * pDecoder->outputChannels * sizeof(float)); // Silence
         return;
     }
 
-    ma_decoder_read_pcm_frames(pDecoder, pOutput, frameCount, NULL);
+    while (frameCount > 0) {
+        ma_uint64 framesRead = 0;
+        ma_result result = ma_decoder_read_pcm_frames(pDecoder, pOutput, frameCount, &framesRead);
+        if (result != MA_SUCCESS) {
+            // Handle the error appropriately. For example, you might want to fill the rest of the buffer with silence.
+            memset(pOutput, 0, frameCount * pDecoder->outputChannels * sizeof(float));
+            return;
+        }
 
-    if (g_silent) {
-        memset(pOutput, 0, frameCount * pDecoder->outputChannels * sizeof(float));
-    }
+        if (framesRead < frameCount) {
+            if (g_loop_playback) {
+                ma_decoder_seek_to_pcm_frame(pDecoder, 0);
+                continue;
+            } else {
+                memset((void *) ((float *) pOutput + framesRead * pDecoder->outputChannels), 0,
+                       (frameCount - framesRead) * pDecoder->outputChannels * sizeof(float));
+                break;
+            }
+        }
 
-    float *pOut = (float *) pOutput;
-    for (ma_uint32 i = 0; i < frameCount * pDecoder->outputChannels; ++i) {
-        pOut[i] *= g_exponential_volume;
+        if (g_silent) {
+            memset(pOutput, 0, framesRead * pDecoder->outputChannels * sizeof(float));
+        } else {
+            float *pOut = (float *) pOutput;
+            for (ma_uint32 i = 0; i < framesRead * pDecoder->outputChannels; ++i) {
+                pOut[i] *= g_exponential_volume;
+            }
+        }
+
+        frameCount -= framesRead;
+        pOutput = (void *) ((float *) pOutput + framesRead * pDecoder->outputChannels);
     }
 
     (void) pInput;

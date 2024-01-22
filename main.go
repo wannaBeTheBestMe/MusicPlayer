@@ -28,7 +28,7 @@ func main() {
 	header := gui.CreateHeader()
 	gui.MainContent = container.New(layout.NewStackLayout())
 	navPanel := gui.CreateNavPanel(gui.MainContent)
-	playerControls := gui.CreatePlayerControls()
+	playerControls := gui.CreatePlayerControls(&w)
 
 	mainLayout := container.NewBorder(header, playerControls, navPanel, nil, gui.MainContent)
 

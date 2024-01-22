@@ -53,6 +53,13 @@ func CleanCP() {
 	}
 }
 
+func SetLoopPlayback(loopPlayback bool) {
+	PDMu.Lock()
+	defer PDMu.Unlock()
+
+	C.set_loop_playback(C.bool(loopPlayback))
+}
+
 func SetSilent(silent bool) {
 	C.set_silent(C.bool(silent))
 }
