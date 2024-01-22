@@ -11,9 +11,18 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
 	"fyne.io/fyne/v2/widget"
+	"golang.org/x/image/font/opentype"
+	"gonum.org/v1/plot"
+	"gonum.org/v1/plot/font"
+	"gonum.org/v1/plot/plotter"
+	"gonum.org/v1/plot/vg"
+	"gonum.org/v1/plot/vg/draw"
+	"gonum.org/v1/plot/vg/vgimg"
+	"image/color"
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -135,6 +144,10 @@ func CreateExploreView() *container.Scroll {
 	for {
 		select {
 		case <-APIRespChan:
+			if APIResp.Search.Artists.Edges[0].Node.MBID == "" {
+				return container.NewScroll(widget.NewLabel("No information was found about this artist."))
+			}
+
 			mainAccordion := widget.NewAccordion()
 
 			for _, edge := range APIResp.Search.Artists.Edges {
@@ -198,6 +211,9 @@ func CreateExploreView() *container.Scroll {
 }
 
 func createImgCard(alb data_access.Album) *fyne.Container {
+	if alb.PictureData == nil {
+		return &fyne.Container{}
+	}
 	reader := bytes.NewReader(alb.PictureData)
 	img := canvas.NewImageFromReader(reader, "image.jpg")
 	img.FillMode = canvas.ImageFillContain
@@ -223,19 +239,17 @@ func createImgCard(alb data_access.Album) *fyne.Container {
 		libraryButton.Refresh()
 
 		go func() {
-			fmt.Println("1")
 			var err error
 			albumArtist := LastLibraryViewAlbum.AlbumArtist
-			fmt.Println(albumArtist)
 			pos := strings.LastIndex(albumArtist, " &")
 			if pos != -1 {
 				firstAlbumArtist := albumArtist[:pos]
 				albumArtist = firstAlbumArtist
-				fmt.Println(firstAlbumArtist)
 			}
 			APIResp, err = api.GetArtistInfo(albumArtist)
 			if err != nil {
-				log.Fatal(err)
+				APIResp = api.ArtistInfoQuery{}
+				//log.Fatal(err)
 			}
 			APIRespChan <- true
 		}()
@@ -248,7 +262,153 @@ func createImgCard(alb data_access.Album) *fyne.Container {
 	return overlay
 }
 
-func CreateSuggestView() *container.Scroll {
+type FieldFreq []float64
 
-	return container.NewScroll(container.NewVBox())
+func (ff FieldFreq) Len() int {
+	return len(ff)
+}
+
+func (ff FieldFreq) Value(i int) float64 {
+	if i >= 0 && i < len(ff) {
+		return ff[i]
+	}
+	return 0
+}
+
+func PlotTrend(x []string, y []float64, name string) *canvas.Image {
+	p := plot.New()
+
+	p.BackgroundColor = color.RGBA{R: 23, G: 23, B: 24, A: 255}
+	//p.Title.Text = "Bar chart"
+	//p.Title.TextStyle.Color = color.White
+	//p.X.Label.Text = "Genres"
+	//p.X.Label.TextStyle.Color = color.White
+	//p.Y.Label.Text = "Heights"
+	//p.Y.Label.TextStyle.Color = color.White
+	p.Title.TextStyle.Font.Size = vg.Points(30)
+	p.X.Label.TextStyle.Font.Size = vg.Points(20)
+	p.Y.Label.TextStyle.Font.Size = vg.Points(20)
+	p.X.Tick.Label.Font.Size = vg.Points(12)
+	p.X.Tick.Label.Color = color.White
+	p.X.Tick.Label.Rotation = 45
+	p.X.Tick.Label.XAlign = draw.XRight
+	p.X.Tick.Label.YAlign = draw.YCenter
+	p.Y.Tick.Label.Font.Size = vg.Points(12)
+	p.Y.Tick.Color = color.White
+	p.Y.Tick.Label.Color = color.White
+	p.Y.LineStyle.Color = color.White
+
+	barsA, err := plotter.NewBarChart(FieldFreq(y), vg.Points(20))
+	if err != nil {
+		panic(err)
+	}
+	barsA.LineStyle.Width = vg.Length(0)
+	barsA.Color = color.RGBA{R: 54, G: 119, B: 246, A: 255}
+
+	p.Add(barsA)
+	p.NominalX(x...)
+
+	width := 10 * vg.Inch
+	height := 6 * vg.Inch
+	dpi := 300
+
+	c := vgimg.NewWith(vgimg.UseWH(width, height), vgimg.UseDPI(dpi))
+	dc := draw.New(c)
+	p.Draw(dc)
+
+	w, err := os.Create(name)
+	if err != nil {
+		panic(err)
+	}
+	defer w.Close()
+
+	pngimg := vgimg.PngCanvas{Canvas: c}
+	if _, err := pngimg.WriteTo(w); err != nil {
+		panic(err)
+	}
+
+	chartImg := canvas.NewImageFromFile(name)
+	chartImg.FillMode = canvas.ImageFillContain
+	chartImg.SetMinSize(fyne.NewSize(512, 512))
+
+	return chartImg
+}
+
+func CreateSuggestView() *container.Scroll {
+	f, _ := os.ReadFile("NotoSans-VariableFont_wdth,wght.ttf")
+	ttf, _ := opentype.Parse(f)
+	noto := font.Font{Typeface: "Noto Sans"}
+	font.DefaultCache.Add([]font.Face{
+		{
+			Font: noto,
+			Face: ttf,
+		},
+	})
+	if !font.DefaultCache.Has(noto) {
+		log.Fatalf("no font %q!", noto.Typeface)
+	}
+	plot.DefaultFont = noto
+	plotter.DefaultFont = noto
+
+	genre, genreFreq, err := data_access.GetFreqByGenre()
+	if err != nil {
+		log.Fatal(err)
+	}
+	genreImg := PlotTrend(genre, genreFreq, "genre.png")
+
+	artist, artistFreq, err := data_access.GetFreqByArtist()
+	if err != nil {
+		log.Fatal(err)
+	}
+	artistImg := PlotTrend(artist, artistFreq, "artist.png")
+
+	album, albumFreq, err := data_access.GetFreqByAlbum()
+	if err != nil {
+		log.Fatal(err)
+	}
+	albumImg := PlotTrend(album, albumFreq, "album.png")
+
+	genreTitle := canvas.NewText("Listens on Top 10 Genres", color.White)
+	genreTitle.TextStyle.Bold = true
+	genreTitle.TextSize = 24
+	genreTitle.Alignment = fyne.TextAlignCenter
+
+	artistTitle := canvas.NewText("Listens on Top 10 Artists", color.White)
+	artistTitle.TextStyle.Bold = true
+	artistTitle.TextSize = 24
+	artistTitle.Alignment = fyne.TextAlignCenter
+
+	albumTitle := canvas.NewText("Listens on Top 10 Albums", color.White)
+	albumTitle.TextStyle.Bold = true
+	albumTitle.TextSize = 24
+	albumTitle.Alignment = fyne.TextAlignCenter
+
+	genreTop, err := data_access.GetTopByGenreFreq()
+	if err != nil {
+		log.Fatal(err)
+	}
+	genreText := fmt.Sprintf("**%v** is the genre you listen to the most. Give **%v** by **%v** another listen!", genreTop.Genre, genreTop.Title, genreTop.Artist)
+	suggestGenre := widget.NewRichTextFromMarkdown(genreText)
+
+	artistTop, err := data_access.GetTopByArtistFreq()
+	if err != nil {
+		log.Fatal(err)
+	}
+	artistText := fmt.Sprintf("**%v** is the artist you've listened to the most. Give **%v** by **%v** another listen!", artistTop.Artist, artistTop.Title, artistTop.Artist)
+	suggestArtist := widget.NewRichTextFromMarkdown(artistText)
+
+	albumTop, err := data_access.GetTopByAlbumFreq()
+	if err != nil {
+		log.Fatal(err)
+	}
+	albumText := fmt.Sprintf("**%v** is the album you've listened to the most. Give **%v** by **%v** another listen!", albumTop.Album, albumTop.Title, albumTop.Artist)
+	suggestAlbum := widget.NewRichTextFromMarkdown(albumText)
+
+	cont := container.NewVBox(
+		genreTitle, genreImg, container.NewCenter(suggestGenre),
+		artistTitle, artistImg, container.NewCenter(suggestArtist),
+		albumTitle, albumImg, container.NewCenter(suggestAlbum),
+	)
+
+	return container.NewScroll(cont)
 }

@@ -11,7 +11,7 @@ import (
 )
 
 func CreateHeader() *fyne.Container {
-	title := canvas.NewText("MusicPlayer", colornames.BlueA100)
+	title := canvas.NewText("MusicPlayer", color.RGBA{R: 54, G: 119, B: 246, A: 255})
 	title.TextSize = 48
 	titleCont := container.NewVBox(title)
 

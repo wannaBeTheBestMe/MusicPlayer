@@ -80,6 +80,275 @@ func GetAlbumDirectories() {
 	}
 }
 
+type DataPoint struct {
+	Field string
+	Freq  int
+}
+
+func GetTopByGenreFreq() (Track, error) {
+	var genre string
+	var freq float64
+
+	queryString := `
+		SELECT Genre, SUM(Freq) AS total
+		FROM tracks
+		WHERE Genre IS NOT NULL AND Genre != '' AND Genre != ' '
+		GROUP BY Genre
+		ORDER BY total DESC
+		LIMIT 1;
+	`
+
+	row := DB.QueryRow(queryString)
+	err := row.Scan(&genre, &freq)
+	if err != nil {
+		return Track{}, fmt.Errorf("GetTopByGenreFreq: %v", err)
+	}
+
+	var topID string
+
+	queryString = `
+		SELECT ID
+		FROM tracks
+		WHERE Genre = ?
+		GROUP BY ID
+		ORDER BY SUM(Freq) DESC
+		LIMIT 1;
+	`
+
+	row = DB.QueryRow(queryString, genre)
+	err = row.Scan(&topID)
+	if err != nil {
+		return Track{}, fmt.Errorf("GetTopByGenreFreq: %v", err)
+	}
+
+	var track Track
+
+	queryString = `
+		SELECT *
+		FROM tracks
+		WHERE ID = ?
+	`
+
+	row = DB.QueryRow(queryString, topID)
+	err = row.Scan(&track.ID, &track.Format, &track.FileType, &track.Title, &track.Album, &track.Artist,
+		&track.AlbumArtist, &track.Composer, &track.Year, &track.Genre, &track.TrackNum, &track.TrackTotal,
+		&track.DiscNum, &track.DiscTotal, &track.PictureExt, &track.PictureMIMEType, &track.PictureType,
+		&track.PictureDescription, &track.PictureData, &track.Lyrics, &track.Comment, &track.Filepath, &track.Freq)
+	if err != nil {
+		return Track{}, fmt.Errorf("GetTopByGenreFreq: %v", err)
+	}
+
+	return track, nil
+}
+
+func GetTopByArtistFreq() (Track, error) {
+	var artist string
+	var freq float64
+
+	queryString := `
+		SELECT Artist, SUM(Freq) AS total
+		FROM tracks
+		WHERE Artist IS NOT NULL AND Artist != '' AND Artist != ' '
+		GROUP BY Artist
+		ORDER BY total DESC
+		LIMIT 1;
+	`
+
+	row := DB.QueryRow(queryString)
+	err := row.Scan(&artist, &freq)
+	if err != nil {
+		return Track{}, fmt.Errorf("GetTopByArtistFreq: %v", err)
+	}
+
+	var topID string
+
+	queryString = `
+		SELECT ID
+		FROM tracks
+		WHERE Artist = ?
+		GROUP BY ID
+		ORDER BY SUM(Freq) DESC
+		LIMIT 1;
+	`
+
+	row = DB.QueryRow(queryString, artist)
+	err = row.Scan(&topID)
+	if err != nil {
+		return Track{}, fmt.Errorf("GetTopByArtistFreq: %v", err)
+	}
+
+	var track Track
+
+	queryString = `
+		SELECT *
+		FROM tracks
+		WHERE ID = ?
+	`
+
+	row = DB.QueryRow(queryString, topID)
+	err = row.Scan(&track.ID, &track.Format, &track.FileType, &track.Title, &track.Album, &track.Artist,
+		&track.AlbumArtist, &track.Composer, &track.Year, &track.Genre, &track.TrackNum, &track.TrackTotal,
+		&track.DiscNum, &track.DiscTotal, &track.PictureExt, &track.PictureMIMEType, &track.PictureType,
+		&track.PictureDescription, &track.PictureData, &track.Lyrics, &track.Comment, &track.Filepath, &track.Freq)
+	if err != nil {
+		return Track{}, fmt.Errorf("GetTopByArtistFreq: %v", err)
+	}
+
+	return track, nil
+}
+
+func GetTopByAlbumFreq() (Track, error) {
+	var album string
+	var freq float64
+
+	queryString := `
+		SELECT Album, SUM(Freq) AS total
+		FROM tracks
+		WHERE Album IS NOT NULL AND Album != '' AND Album != ' '
+		GROUP BY Album
+		ORDER BY total DESC
+		LIMIT 1;
+	`
+
+	row := DB.QueryRow(queryString)
+	err := row.Scan(&album, &freq)
+	if err != nil {
+		return Track{}, fmt.Errorf("GetTopByAlbumFreq: %v", err)
+	}
+
+	var topID string
+
+	queryString = `
+		SELECT ID
+		FROM tracks
+		WHERE Album = ?
+		GROUP BY ID
+		ORDER BY SUM(Freq) DESC
+		LIMIT 1;
+	`
+
+	row = DB.QueryRow(queryString, album)
+	err = row.Scan(&topID)
+	if err != nil {
+		return Track{}, fmt.Errorf("GetTopByAlbumFreq: %v", err)
+	}
+
+	var track Track
+
+	queryString = `
+		SELECT *
+		FROM tracks
+		WHERE ID = ?
+	`
+
+	row = DB.QueryRow(queryString, topID)
+	err = row.Scan(&track.ID, &track.Format, &track.FileType, &track.Title, &track.Album, &track.Artist,
+		&track.AlbumArtist, &track.Composer, &track.Year, &track.Genre, &track.TrackNum, &track.TrackTotal,
+		&track.DiscNum, &track.DiscTotal, &track.PictureExt, &track.PictureMIMEType, &track.PictureType,
+		&track.PictureDescription, &track.PictureData, &track.Lyrics, &track.Comment, &track.Filepath, &track.Freq)
+	if err != nil {
+		return Track{}, fmt.Errorf("GetTopByAlbumFreq: %v", err)
+	}
+
+	return track, nil
+}
+
+func GetFreqByGenre() ([]string, []float64, error) {
+	var genre []string
+	var freq []float64
+
+	queryString := `
+		SELECT Genre, SUM(Freq) AS total
+		FROM tracks
+		WHERE Genre IS NOT NULL AND Genre != '' AND Genre != ' '
+		GROUP BY Genre
+		ORDER BY total DESC
+		LIMIT 10;
+	`
+
+	rows, err := DB.Query(queryString)
+	if err != nil {
+		return nil, nil, fmt.Errorf("GetFreqByGenre: %v", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var g string
+		var f float64
+		err := rows.Scan(&g, &f)
+		if err != nil {
+			return nil, nil, fmt.Errorf("GetFreqByGenre: %v", err)
+		}
+		genre = append(genre, g)
+		freq = append(freq, f)
+	}
+	return genre, freq, nil
+}
+
+func GetFreqByArtist() ([]string, []float64, error) {
+	var artist []string
+	var freq []float64
+
+	queryString := `
+		SELECT Artist, SUM(Freq) AS total
+		FROM tracks
+		WHERE Artist IS NOT NULL AND Artist != '' AND Artist != ' '
+		GROUP BY Artist
+		ORDER BY total DESC
+		LIMIT 10;
+	`
+
+	rows, err := DB.Query(queryString)
+	if err != nil {
+		return nil, nil, fmt.Errorf("GetFreqByArtist: %v", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var a string
+		var f float64
+		err := rows.Scan(&a, &f)
+		if err != nil {
+			return nil, nil, fmt.Errorf("GetFreqByArtist: %v", err)
+		}
+		artist = append(artist, a)
+		freq = append(freq, f)
+	}
+	return artist, freq, nil
+}
+
+func GetFreqByAlbum() ([]string, []float64, error) {
+	var album []string
+	var freq []float64
+
+	queryString := `
+		SELECT Album, SUM(Freq) AS total
+		FROM tracks
+		WHERE Album IS NOT NULL AND Album != '' AND Album != ' '
+		GROUP BY Album
+		ORDER BY total DESC
+		LIMIT 10;
+	`
+
+	rows, err := DB.Query(queryString)
+	if err != nil {
+		return nil, nil, fmt.Errorf("GetFreqByAlbum: %v", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var a string
+		var f float64
+		err := rows.Scan(&a, &f)
+		if err != nil {
+			return nil, nil, fmt.Errorf("GetFreqByAlbum: %v", err)
+		}
+		album = append(album, a)
+		freq = append(freq, f)
+	}
+	return album, freq, nil
+}
+
 func IncrementTrackFreq(track Track) error {
 	queryString := `UPDATE tracks SET Freq = Freq + 1 WHERE id = ?`
 
