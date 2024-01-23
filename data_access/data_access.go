@@ -80,6 +80,34 @@ func GetAlbumDirectories() {
 	}
 }
 
+func GetFulltextSearchResults(term string) ([]Track, error) {
+	var tracks []Track
+
+	queryString := `
+		SELECT * FROM tracks WHERE MATCH(Title, Album, Artist, AlbumArtist, Composer, Lyrics) AGAINST(? IN NATURAL LANGUAGE MODE);
+	`
+
+	rows, err := DB.Query(queryString, term)
+	if err != nil {
+		return []Track{}, fmt.Errorf("GetFulltextSearchResults: %v", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var track Track
+		err := rows.Scan(&track.ID, &track.Format, &track.FileType, &track.Title, &track.Album, &track.Artist,
+			&track.AlbumArtist, &track.Composer, &track.Year, &track.Genre, &track.TrackNum, &track.TrackTotal,
+			&track.DiscNum, &track.DiscTotal, &track.PictureExt, &track.PictureMIMEType, &track.PictureType,
+			&track.PictureDescription, &track.PictureData, &track.Lyrics, &track.Comment, &track.Filepath, &track.Freq)
+		if err != nil {
+			return []Track{}, fmt.Errorf("GetFulltextSearchResults: %v", err)
+		}
+		tracks = append(tracks, track)
+	}
+
+	return tracks, nil
+}
+
 type DataPoint struct {
 	Field string
 	Freq  int

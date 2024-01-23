@@ -69,7 +69,13 @@ func CreateLibraryView(alb data_access.Album) *container.Scroll {
 		log.Fatal(err)
 	}
 
-	trackList = widget.NewList(
+	trackList = getListOfTracks(tracks)
+
+	return container.NewScroll(trackList)
+}
+
+func getListOfTracks(tracks []data_access.Track) *widget.List {
+	listOfTracks := widget.NewList(
 		func() int {
 			return len(tracks)
 		},
@@ -99,7 +105,7 @@ func CreateLibraryView(alb data_access.Album) *container.Scroll {
 		},
 	)
 
-	trackList.OnSelected = func(num widget.ListItemID) {
+	listOfTracks.OnSelected = func(num widget.ListItemID) {
 		track := tracks[num]
 		currentTrack = track
 		//fmt.Println(currentTrack)
@@ -116,7 +122,7 @@ func CreateLibraryView(alb data_access.Album) *container.Scroll {
 		}
 	}
 
-	return container.NewScroll(trackList)
+	return listOfTracks
 }
 
 // fetchImage fetches an image from a URL and returns a canvas.Image.
@@ -147,6 +153,8 @@ func fetchImage(url string, imgChan chan<- *canvas.Image) {
 }
 
 func CreateExploreView() *container.Scroll {
+	currentView = "Explore"
+
 	for {
 		select {
 		case <-APIRespChan:
@@ -240,9 +248,13 @@ func createImgCard(alb data_access.Album) *fyne.Container {
 		homeButton.Importance = widget.MediumImportance
 		exploreButton.Importance = widget.MediumImportance
 		libraryButton.Importance = widget.HighImportance
+		suggestButton.Importance = widget.MediumImportance
+		searchButton.Importance = widget.MediumImportance
 		homeButton.Refresh()
 		exploreButton.Refresh()
 		libraryButton.Refresh()
+		suggestButton.Refresh()
+		searchButton.Refresh()
 
 		go func() {
 			var err error
@@ -341,6 +353,8 @@ func PlotTrend(x []string, y []float64, name string) *canvas.Image {
 }
 
 func CreateSuggestView() *container.Scroll {
+	currentView = "Suggest"
+
 	f, _ := os.ReadFile("NotoSans-VariableFont_wdth,wght.ttf")
 	ttf, _ := opentype.Parse(f)
 	noto := font.Font{Typeface: "Noto Sans"}
@@ -417,4 +431,83 @@ func CreateSuggestView() *container.Scroll {
 	)
 
 	return container.NewScroll(cont)
+}
+
+func CreateSearchView(mainContent *fyne.Container) *fyne.Container {
+	currentView = "Search"
+
+	// Create the search entry
+	searchEntry := widget.NewEntry()
+	searchEntry.SetPlaceHolder("Enter search term")
+
+	var searchResults []data_access.Track
+
+	// Create the list to display search results
+	searchList := widget.NewList(
+		func() int {
+			return len(searchResults)
+		},
+		func() fyne.CanvasObject {
+			return container.NewHBox(
+				newLabelWithFixedWidth("", 600), // Title
+				newLabelWithFixedWidth("", 500), // Album
+				newLabelWithFixedWidth("", 400), // Artist
+				newLabelWithFixedWidth("", 100), // Year
+				newLabelWithFixedWidth("", 200), // Genre
+			)
+		},
+		func(id widget.ListItemID, item fyne.CanvasObject) {
+			track := searchResults[id]
+			hbox := item.(*fyne.Container)
+			hbox.Objects[0].(*fyne.Container).Objects[0].(*widget.Label).SetText(track.Title)
+			hbox.Objects[1].(*fyne.Container).Objects[0].(*widget.Label).SetText(track.Album)
+			hbox.Objects[2].(*fyne.Container).Objects[0].(*widget.Label).SetText(track.Artist)
+			hbox.Objects[3].(*fyne.Container).Objects[0].(*widget.Label).SetText(strconv.Itoa(track.Year))
+			hbox.Objects[4].(*fyne.Container).Objects[0].(*widget.Label).SetText(track.Genre)
+		},
+	)
+
+	// Set the OnSelected function to handle click events
+	searchList.OnSelected = func(id widget.ListItemID) {
+		track := searchResults[id]
+		albFromTrack := data_access.Album{
+			ID:          track.ID,
+			Title:       track.Album,
+			AlbumArtist: track.AlbumArtist,
+			PictureData: track.PictureData,
+		}
+		UpdateContent(mainContent, CreateLibraryView(albFromTrack))
+		LastLibraryViewAlbum = albFromTrack
+		homeButton.Importance = widget.MediumImportance
+		exploreButton.Importance = widget.MediumImportance
+		libraryButton.Importance = widget.HighImportance
+		suggestButton.Importance = widget.MediumImportance
+		searchButton.Importance = widget.MediumImportance
+		homeButton.Refresh()
+		exploreButton.Refresh()
+		libraryButton.Refresh()
+		suggestButton.Refresh()
+		searchButton.Refresh()
+	}
+
+	// Function to update the search results
+	updateSearchResults := func(searchTerm string) {
+		// Update searchResults with the query from the database based on searchTerm
+		// Then refresh the list
+		var err error
+		searchResults, err = data_access.GetFulltextSearchResults(searchTerm)
+		if err != nil {
+			log.Fatal(err)
+		}
+		searchList.Refresh()
+	}
+
+	// Set the function to be executed when the user presses Enter
+	searchEntry.OnSubmitted = func(s string) {
+		updateSearchResults(s)
+	}
+
+	cont := container.NewBorder(searchEntry, nil, nil, nil, searchList)
+
+	return cont
 }
