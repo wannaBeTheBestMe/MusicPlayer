@@ -21,6 +21,8 @@ var trackDuration time.Duration
 
 var vol float64
 
+var playPauseButton *widget.Button
+
 func CreatePlayerControls(myWindow *fyne.Window) *fyne.Container {
 	skipPrevious := widget.NewButtonWithIcon("", theme.MediaSkipPreviousIcon(), nil)
 	skipPrevOnTapped := func() {
@@ -49,7 +51,7 @@ func CreatePlayerControls(myWindow *fyne.Window) *fyne.Container {
 		}
 	})
 
-	playPauseButton := widget.NewButtonWithIcon("", theme.MediaPlayIcon(), nil)
+	playPauseButton = widget.NewButtonWithIcon("", theme.MediaPlayIcon(), nil)
 	playPauseOnTapped := func() {
 		if playPauseButton.Icon == theme.MediaPlayIcon() {
 			playPauseButton.SetIcon(theme.MediaPauseIcon())

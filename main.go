@@ -33,7 +33,7 @@ func main() {
 	mainLayout := container.NewBorder(header, playerControls, navPanel, nil, gui.MainContent)
 
 	w.SetContent(mainLayout)
-	w.Resize(fyne.NewSize(960, 540))
+	w.Resize(fyne.NewSize(800*1.3, 450*1.3))
 
 	w.ShowAndRun()
 }

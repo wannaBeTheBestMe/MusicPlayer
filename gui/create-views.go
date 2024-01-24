@@ -10,6 +10,7 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	"golang.org/x/image/font/opentype"
 	"gonum.org/v1/plot"
@@ -35,6 +36,9 @@ var LastLibraryViewAlbum data_access.Album
 var currentTrack data_access.Track
 
 var trackList *widget.List
+var lastTrackAdded data_access.Track
+
+var openPlaylists = make(map[string]bool)
 
 func CreateHomeView() *container.Scroll {
 	currentView = "Home"
@@ -61,15 +65,109 @@ func newLabelWithFixedWidth(text string, width float32) *fyne.Container {
 	return container.NewGridWrap(fyne.NewSize(width, label.MinSize().Height), label)
 }
 
-func CreateLibraryView(alb data_access.Album) *container.Scroll {
-	currentView = "Library"
+type IconWithContext struct {
+	widget.Icon
+	OnTapGo func(*fyne.PointEvent)
+	track   data_access.Track
+}
 
-	tracks, err := data_access.GetTracksInAlbum(alb)
+func NewIconWithContext(res fyne.Resource, tapped func(_ *fyne.PointEvent), track data_access.Track) *IconWithContext {
+	icon := &IconWithContext{track: track}
+	icon.ExtendBaseWidget(icon)
+	icon.SetResource(res)
+	icon.OnTapGo = tapped
+	return icon
+}
+
+func (t *IconWithContext) Tapped(x *fyne.PointEvent) {
+	// Initialize an empty slice for menu items
+	var menuItems []*fyne.MenuItem
+
+	playlists, err := data_access.GetAllPlaylists()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	trackList = getListOfTracks(tracks)
+	for _, playlist := range playlists {
+		pl := playlist // Local copy for closure
+		menuItem := fyne.NewMenuItem(pl.Name, func() {
+			fmt.Println(pl)
+			fmt.Println(t.track.ID)
+			err := data_access.AddTrackToPlaylist(pl, t.track)
+			if err != nil {
+				log.Fatal(err)
+			}
+		})
+		menuItems = append(menuItems, menuItem)
+	}
+
+	leftClickMenu := fyne.NewMenu("Add tracks to playlist...", menuItems...)
+	widget.ShowPopUpMenuAtPosition(leftClickMenu, fyne.CurrentApp().Driver().CanvasForObject(t), x.AbsolutePosition)
+}
+
+func CreateLibraryView(alb data_access.Album) *container.Scroll {
+	currentView = "Library"
+
+	tracks, err := data_access.GetTracksInAlbum(alb)
+	fmt.Println("LOGGING")
+	for _, track := range tracks {
+		fmt.Println(track.ID)
+	}
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	listOfTracks := widget.NewList(
+		func() int {
+			return len(tracks)
+		},
+		func() fyne.CanvasObject {
+			return container.NewHBox(
+				NewIconWithContext(theme.ContentAddIcon(), func(_ *fyne.PointEvent) {}, data_access.Track{}),
+				newLabelWithFixedWidth("", 500), // Title
+				newLabelWithFixedWidth("", 400), // Artist
+				newLabelWithFixedWidth("", 100), // Year
+				newLabelWithFixedWidth("", 200), // Genre
+				newLabelWithFixedWidth("", 100), // Duration
+			)
+		},
+		func(num widget.ListItemID, item fyne.CanvasObject) {
+			track := tracks[num]
+			//localTrack := track
+			hbox := item.(*fyne.Container)
+			icon := NewIconWithContext(theme.ContentAddIcon(), func(_ *fyne.PointEvent) {}, track)
+			hbox.Objects[0] = icon
+			hbox.Objects[1].(*fyne.Container).Objects[0].(*widget.Label).SetText(strconv.Itoa(num+1) + ". " + track.Title)
+			hbox.Objects[2].(*fyne.Container).Objects[0].(*widget.Label).SetText(track.Artist)
+			hbox.Objects[3].(*fyne.Container).Objects[0].(*widget.Label).SetText(strconv.Itoa(track.Year))
+			hbox.Objects[4].(*fyne.Container).Objects[0].(*widget.Label).SetText(track.Genre)
+
+			//fmt.Println(track)
+			path := fmt.Sprintf("%s", track.Filepath)
+			//fmt.Println(path)
+			duration := time.Duration(playback.GetTotalLengthFromPath(path)) * time.Second
+			formattedDuration := FormatTime(duration)
+			hbox.Objects[5].(*fyne.Container).Objects[0].(*widget.Label).SetText(formattedDuration)
+		},
+	)
+
+	listOfTracks.OnSelected = func(num widget.ListItemID) {
+		track := tracks[num]
+		currentTrack = track
+		//fmt.Println(currentTrack)
+
+		playback.PauseAudio(playback.PDevice)
+		playback.CleanCP()
+		go playback.PlayAudio(fmt.Sprintf("%s", track.Filepath))
+		//playback.PauseAudio(playback.PDevice)
+		playback.ResumeAudio(playback.PDevice)
+
+		err := data_access.IncrementTrackFreq(track)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+	trackList = listOfTracks
 
 	return container.NewScroll(trackList)
 }
@@ -510,4 +608,63 @@ func CreateSearchView(mainContent *fyne.Container) *fyne.Container {
 	cont := container.NewBorder(searchEntry, nil, nil, nil, searchList)
 
 	return cont
+}
+
+func CreatePlaylistsViews() *container.Scroll {
+	currentView = "Playlists"
+
+	newPlaylistName := widget.NewEntry()
+	newPlaylistName.SetPlaceHolder("Enter your new playlist name here")
+
+	playlists, err := data_access.GetAllPlaylists()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	playlistsCont := container.NewVBox()
+	getPlaylistsAgain := func() {
+		for _, playlist := range playlists {
+			tracks, err := data_access.GetAllTracksInPlaylist(playlist)
+			if err != nil {
+				log.Fatal(err)
+			}
+			tracksCont := container.NewVBox()
+			for _, track := range tracks {
+				trackData, _ := data_access.GetTrackByID(track.TrackID)
+				button := widget.NewButton("", func() {
+					if playPauseButton.Icon == theme.MediaPauseIcon() {
+						playback.PauseAudio(playback.PDevice)
+						playback.CleanCP()
+						go playback.PlayAudio(trackData.Filepath)
+					} else {
+						playback.CleanCP()
+						go playback.PlayAudio(trackData.Filepath)
+					}
+				})
+				button.Importance = widget.LowImportance
+				tracksCont.Add(container.NewStack(button, widget.NewLabel(trackData.Title)))
+			}
+			newItem := widget.NewAccordionItem(playlist.Name, tracksCont)
+			playlistAccordion := widget.NewAccordion(newItem)
+			playlistsCont.Add(playlistAccordion)
+		}
+	}
+
+	getPlaylistsAgain()
+
+	newPlaylistName.OnSubmitted = func(s string) {
+		_, err := data_access.CreatePlaylist(s)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		getPlaylistsAgain()
+		playlistsCont.Refresh()
+		newPlaylistName.SetText("")
+		newPlaylistName.Refresh()
+	}
+
+	viewCont := container.NewVBox(newPlaylistName, playlistsCont)
+
+	return container.NewScroll(viewCont)
 }

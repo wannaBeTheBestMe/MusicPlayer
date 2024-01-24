@@ -80,6 +80,114 @@ func GetAlbumDirectories() {
 	}
 }
 
+type Playlist struct {
+	PlaylistID int64
+	Name       string
+}
+
+type PlaylistTrack struct {
+	PlaylistID int64
+	TrackID    int64
+	TrackNum   int
+}
+
+func GetPlaylistByID(id int64) (Playlist, error) {
+	var playlist Playlist
+
+	queryString := `
+		SELECT * FROM playlists WHERE PlaylistID = ?
+	`
+
+	row, err := DB.Query(queryString, id)
+	if err != nil {
+		return Playlist{}, fmt.Errorf("GetPlaylistByID: %v", err)
+	}
+
+	err = row.Scan(&playlist.PlaylistID, &playlist.Name)
+	if err != nil {
+		return Playlist{}, fmt.Errorf("GetPlaylistByID: %v", err)
+	}
+
+	return playlist, nil
+}
+
+func GetAllTracksInPlaylist(playlist Playlist) ([]PlaylistTrack, error) {
+	var playlistTracks []PlaylistTrack
+
+	queryString := `SELECT * FROM playlisttracks WHERE PlaylistID = ?`
+
+	rows, err := DB.Query(queryString, playlist.PlaylistID)
+	if err != nil {
+		return []PlaylistTrack{}, fmt.Errorf("GetAllTracksInPlaylist: %v", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var playlistTrack PlaylistTrack
+		err := rows.Scan(&playlistTrack.PlaylistID, &playlistTrack.TrackID, &playlistTrack.TrackNum)
+		if err != nil {
+			return []PlaylistTrack{}, fmt.Errorf("GetAllTracksInPlaylist: %v", err)
+		}
+		playlistTracks = append(playlistTracks, playlistTrack)
+	}
+
+	return playlistTracks, nil
+}
+
+func GetAllPlaylists() ([]Playlist, error) {
+	var playlists []Playlist
+
+	queryString := `SELECT * FROM playlists`
+
+	rows, err := DB.Query(queryString)
+	if err != nil {
+		return []Playlist{}, fmt.Errorf("GetAllPlaylists: %v", err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var playlist Playlist
+		err := rows.Scan(&playlist.PlaylistID, &playlist.Name)
+		if err != nil {
+			return []Playlist{}, fmt.Errorf("GetAllPlaylists: %v", err)
+		}
+		playlists = append(playlists, playlist)
+	}
+
+	return playlists, nil
+}
+
+func CreatePlaylist(name string) (int64, error) {
+	queryString := `
+		INSERT INTO playlists(Name) VALUES (?);
+	`
+
+	res, err := DB.Exec(queryString, name)
+	if err != nil {
+		return -1, fmt.Errorf("CreatePlaylist: %v", err)
+	}
+
+	playlistID, err := res.LastInsertId()
+	if err != nil {
+		return -1, fmt.Errorf("CreatePlaylist: %v", err)
+	}
+
+	return playlistID, nil
+}
+
+func AddTrackToPlaylist(playlist Playlist, track Track) error {
+	queryString := `
+		INSERT INTO playlisttracks(PlaylistID, TrackID, TrackNum) VALUES (?, ?, ?);
+	`
+
+	_, err := DB.Exec(queryString, playlist.PlaylistID, track.ID, track.TrackNum)
+	if err != nil {
+		return fmt.Errorf("AddTracksToPlaylist: %v", err)
+	}
+
+	return nil
+}
+
 func GetFulltextSearchResults(term string) ([]Track, error) {
 	var tracks []Track
 
@@ -377,6 +485,24 @@ func GetFreqByAlbum() ([]string, []float64, error) {
 	return album, freq, nil
 }
 
+func GetTrackByID(id int64) (Track, error) {
+	var track Track
+
+	queryString := `SELECT * FROM tracks WHERE id = ?`
+
+	row := DB.QueryRow(queryString, id)
+
+	err := row.Scan(&track.ID, &track.Format, &track.FileType, &track.Title, &track.Album, &track.Artist,
+		&track.AlbumArtist, &track.Composer, &track.Year, &track.Genre, &track.TrackNum, &track.TrackTotal,
+		&track.DiscNum, &track.DiscTotal, &track.PictureExt, &track.PictureMIMEType, &track.PictureType,
+		&track.PictureDescription, &track.PictureData, &track.Lyrics, &track.Comment, &track.Filepath, &track.Freq)
+	if err != nil {
+		return Track{}, fmt.Errorf("GetTrackByID: %v", err)
+	}
+
+	return track, nil
+}
+
 func IncrementTrackFreq(track Track) error {
 	queryString := `UPDATE tracks SET Freq = Freq + 1 WHERE id = ?`
 
@@ -401,8 +527,11 @@ func BatchAddTracks(dir string) {
 		} else {
 			func(filename string) {
 				pathToTrack := filepath.Join(dir, filename)
-				currTrack := CreateTrackFromFile(pathToTrack, dir)
-				_, err := AddTrack(currTrack)
+				currTrack, err := CreateTrackFromFile(pathToTrack, dir)
+				if err != nil {
+					fmt.Println(err)
+				}
+				_, err = AddTrack(currTrack)
 				if err != nil {
 					fmt.Println(err)
 					return
@@ -478,22 +607,17 @@ func getImage(directory string) (*tag.Picture, error) {
 	return &pic, err
 }
 
-func CreateTrackFromFile(filePath string, dir string) Track {
+func CreateTrackFromFile(filePath string, dir string) (Track, error) {
 	f, err := os.Open(filePath)
 	if err != nil {
-		log.Printf("Error opening file %s: %v", filePath, err)
-		return Track{Valid: false}
+		return Track{Valid: false}, fmt.Errorf("Error opening file %s: %v", filePath, err)
 	}
 	defer f.Close()
 
 	tags, err := ReadTags(f, &filePath)
 	if err != nil {
-		log.Printf("Error reading tags from file %s: %v", filePath, err)
-		return Track{Valid: false}
+		return Track{Valid: false}, fmt.Errorf("Error reading tags from file %s: %v", filePath, err)
 	}
-
-	// Process tags here...
-	//log.Printf("Tags for %s: %v", filePath, tags)
 
 	trackNum, trackTotal := tags.Track()
 	discNum, discTotal := tags.Disc()
@@ -527,7 +651,7 @@ func CreateTrackFromFile(filePath string, dir string) Track {
 		track.PictureDescription = pic.Description
 		track.PictureData = pic.Data
 
-		return track
+		return track, nil
 	}
 
 	folderPic, err := getImage(dir)
@@ -540,7 +664,7 @@ func CreateTrackFromFile(filePath string, dir string) Track {
 	track.PictureDescription = folderPic.Description
 	track.PictureData = folderPic.Data
 
-	return track
+	return track, nil
 }
 
 func ReadTags(file *os.File, path *string) (tag.Metadata, error) {
