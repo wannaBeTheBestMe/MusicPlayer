@@ -3,7 +3,7 @@ Please note that the full, original documentation (criteria A, B, C, D and E) ar
 The development time for this IA project was roughly 20 full days.
 # Functionalities
 ## Video
-If you would prefer a video demonstrating the functionalities, please refer to the video below. It is uploaded in the repository as `Crit_D_Video.mp4`. Please note that the video has been sped up to save time.
+If you would prefer a video demonstrating the functionalities, please refer to the video. It is uploaded in the repository as `Crit_D_Video.mp4`. Please note that the video has been sped up to save time.
 ## Import tracks and store them in a database with the attributes found in the file
 1. Please make sure to have music in the `~/Music/MusicPlayer` directory: [![](screenshots/success-criteria-1-1.png)]
 2. Please start MusicPlayer and select **Import tracks to database** from the **Import** menu: [![](screenshots/success-criteria-1-2.png)]
