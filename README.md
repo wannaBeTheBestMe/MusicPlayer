@@ -1,4 +1,4 @@
-Please note that the full, original documentation (criteria A, B, C, D and E) are uploaded under the `Documentation` folder.
+Please note that the full, original documentation (criteria A, B, C, D and E) is uploaded at https://drive.google.com/drive/folders/1g0U5e7ziazMRq0R_anqwJGPrx9qslP42?usp=sharing.
 
 The development time for this IA project was roughly 20 full days.
 # Functionalities
