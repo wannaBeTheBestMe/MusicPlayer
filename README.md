@@ -1,4 +1,4 @@
-Please note that the full, original documentation (criteria A, B, C, D and E) are uploaded under the `Forms` folder.
+Please note that the full, original documentation (criteria A, B, C, D and E) are uploaded under the `Documentation` folder.
 
 The development time for this IA project was roughly 20 full days.
 # Functionalities
